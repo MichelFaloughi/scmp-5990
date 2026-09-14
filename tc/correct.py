@@ -77,8 +77,8 @@ def fit_predict_cv(df, target, groups, n_splits=5, seeds=(0, 1, 2, 3, 4)):
     return pred
 
 if __name__ == "__main__":
-    tr = pd.read_csv(f"{ROOT}/data/tc/aifs_tracks.csv", parse_dates=["init", "valid"])
-    bt = pd.read_csv(f"{ROOT}/data/tc/besttrack.csv", parse_dates=["ISO_TIME"])
+    tr = pd.read_csv(f"{ROOT}/data/tc/aifs_tracks.csv", parse_dates=["init", "valid"], keep_default_na=False, na_values=[""])
+    bt = pd.read_csv(f"{ROOT}/data/tc/besttrack.csv", parse_dates=["ISO_TIME"], keep_default_na=False, na_values=[""])
     df = build_features(tr, bt)
     lab = df.dropna(subset=["bt_wind_kt", "obs0_wind"]).copy()
     lab = lab[lab.step > 0]

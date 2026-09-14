@@ -7,6 +7,7 @@ import glob, os
 import numpy as np, pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+KEEP = {"OFCL", "CARQ", "EAIO", "GDMN", "FNV3", "HAFS", "HFSA", "HWRF", "AVNO", "AEMN"}
 
 def parse_latlon(s):
     s = s.strip()
@@ -19,7 +20,7 @@ rows = []
 for f in sorted(glob.glob(f"{ROOT}/data/atcf/a[ae][lp]??20??.dat")):
     for line in open(f, errors="ignore"):
         p = [x.strip() for x in line.split(",")]
-        if len(p) < 10 or p[4] not in ("OFCL", "CARQ"):
+        if len(p) < 10 or p[4] not in KEEP:
             continue
         try:
             rows.append(dict(atcf_id=f"{p[0]}{int(p[1]):02d}{p[2][:4]}", init=pd.to_datetime(p[2][:10], format="%Y%m%d%H"), tech=p[4],

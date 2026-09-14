@@ -50,7 +50,7 @@ def track(run, seed_lat, seed_lon, start_step=0):
     return pd.DataFrame(out)
 
 def main(files):
-    bt = pd.read_csv(f"{ROOT}/data/tc/besttrack.csv", parse_dates=["ISO_TIME"])
+    bt = pd.read_csv(f"{ROOT}/data/tc/besttrack.csv", parse_dates=["ISO_TIME"], keep_default_na=False, na_values=[""])
     bt["USA_LON"] = np.where(bt.USA_LON > 180, bt.USA_LON - 360, bt.USA_LON)
     rows = []
     for f in files:
