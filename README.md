@@ -1,5 +1,11 @@
 # scmp-5990 — running ECMWF AIFS-Single 2.0 locally
 
+![AIFS forecast animation: hurricanes Lowell, Karina and Marie](assets/aifs_2026090200.gif)
+
+*One AIFS run (2026-09-02 00Z) through +168 h: 10 m wind speed, MSLP contours, and this repo's
+tracker following hurricanes Lowell, Karina and Marie. Made with `tc/animate.py`; see the
+[Mini AIFS-TC](#mini-aifs-tc-tc) section.*
+
 Runs ECMWF's open AI weather model on a laptop CPU (tested on Apple M5, 32 GB RAM).
 
 ## What's here
@@ -84,11 +90,6 @@ A scaled-down reproduction of Allen et al. 2026, *AIFS-TC* (arXiv 2608.09959): l
 AIFS-Single's tropical-cyclone intensity forecasts. The paper trains on nine years of ECMWF-internal hindcasts;
 this uses the ~18 months of operational AIFS-Single output that the ECMWF Open Data **AWS mirror retains**
 (`s3://ecmwf-forecasts`, every run since 2025-02-25, out to 360 h, with `.index` byte-range files).
-
-![AIFS forecast animation: hurricanes Lowell, Karina and Marie](assets/aifs_2026090200.gif)
-
-*One AIFS run (2026-09-02 00Z) through +168 h: 10 m wind speed, MSLP contours, and the tracker
-following hurricanes Lowell, Karina and Marie. Made with `tc/animate.py`.*
 
 | Script | Does | Output |
 |---|---|---|
