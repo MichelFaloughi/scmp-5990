@@ -1,5 +1,3 @@
-# scmp-5990 — running ECMWF AIFS-Single 2.0 locally
-
 ![AIFS forecast animation: hurricanes Lowell, Karina and Marie](assets/aifs_2026090200.gif)
 
 *One AIFS run (2026-09-02 00Z) through +168 h: 10 m wind speed, MSLP contours, and this repo's
