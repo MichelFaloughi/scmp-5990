@@ -21,6 +21,14 @@ SEQ = LinearSegmentedColormap.from_list("seq_blue", [   # sequential one-hue ram
     "#fcfcfb", "#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"])
 
 
+def degree_axes(ax):
+    from matplotlib.ticker import FuncFormatter
+    ax.xaxis.set_major_formatter(FuncFormatter(
+        lambda x, _: "0\N{DEGREE SIGN}" if x == 0 else f"{abs(x):g}\N{DEGREE SIGN}{'W' if x < 0 else 'E'}"))
+    ax.yaxis.set_major_formatter(FuncFormatter(
+        lambda y, _: "0\N{DEGREE SIGN}" if y == 0 else f"{abs(y):g}\N{DEGREE SIGN}{'N' if y > 0 else 'S'}"))
+
+
 def style(ax):
     ax.set_facecolor(SURFACE)
     for s in ax.spines.values():
@@ -80,11 +88,12 @@ def plot_map(init, step):
                   framealpha=0.9, facecolor=SURFACE, edgecolor=GRID, labelcolor=INK2)
         ax.set_xlim(tr.lon.min() - 12, tr.lon.max() + 12)
         ax.set_ylim(max(0, tr.lat.min() - 8), min(60, tr.lat.max() + 8))
+    degree_axes(ax)
     fig.colorbar(pm, ax=ax, shrink=0.85, pad=0.02, label="10 m wind speed (m/s)")
     ax.set_title(f"AIFS-Single  init {init[:8]} {init[8:]}Z  +{step}h   "
                  f"MSLP contours every 4 hPa", fontsize=11, color=INK, loc="left")
     out = os.path.join(ROOT, "out", f"tc_map_{init}_{step:03d}h.png")
-    fig.savefig(out, dpi=130, bbox_inches="tight", facecolor=SURFACE)
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor=SURFACE)
     print("wrote", out)
 
 
@@ -117,7 +126,7 @@ def plot_intensity(name):
                  fontsize=11, color=INK, loc="left")
     fig.autofmt_xdate()
     out = os.path.join(ROOT, "out", f"tc_intensity_{name.lower()}.png")
-    fig.savefig(out, dpi=130, bbox_inches="tight", facecolor=SURFACE)
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor=SURFACE)
     print("wrote", out)
 
 

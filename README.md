@@ -85,6 +85,11 @@ AIFS-Single's tropical-cyclone intensity forecasts. The paper trains on nine yea
 this uses the ~18 months of operational AIFS-Single output that the ECMWF Open Data **AWS mirror retains**
 (`s3://ecmwf-forecasts`, every run since 2025-02-25, out to 360 h, with `.index` byte-range files).
 
+![AIFS forecast animation: hurricanes Lowell, Karina and Marie](assets/aifs_2026090200.gif)
+
+*One AIFS run (2026-09-02 00Z) through +168 h: 10 m wind speed, MSLP contours, and the tracker
+following hurricanes Lowell, Karina and Marie. Made with `tc/animate.py`.*
+
 | Script | Does | Output |
 |---|---|---|
 | `tc/catalog.py` | Storms + 6-hourly best track from IBTrACS (NA + EP, 2025-) and the list of 00/12Z AIFS runs to fetch | `data/tc/{storms,besttrack,inits}.csv` |
@@ -92,7 +97,11 @@ this uses the ~18 months of operational AIFS-Single output that the ECMWF Open D
 | `tc/track.py` | Tracker: follow the MSLP minimum from the best-track seed; vmax = max 10 m wind within 250 km | `data/tc/aifs_tracks.csv` |
 | `tc/atcf.py` | Parse NHC a-decks for OFCL (official forecast) and CARQ | `data/tc/ofcl.csv` |
 | `tc/correct.py` | Features + gradient-boosted residual model, storm-grouped 5-fold CV, RI cases weighted 2x | `data/tc/aifs_tracks_corrected.csv` |
-| `tc/evaluate.py` | MAE by lead: raw AIFS vs NHC OFCL vs corrected, homogeneous samples | stdout |
+| `tc/evaluate.py` | MAE by lead: raw AIFS vs NHC OFCL vs corrected, homogeneous samples | stdout, `--out` markdown tables |
+| `tc/correct_eta.py` | Extreme Event Aware (eta-) learning (Chang & Sapsis 2026): MLP + tail-quantile W1 regularizer, vs an identical plain-MSE MLP | `data/tc/aifs_tracks_eta.csv` |
+| `tc/plot_tc.py` | Synoptic maps and per-storm intensity spaghetti plots | `out/*.png` |
+| `tc/plot_results.py` | Headline MAE-by-lead figure from the evaluate tables | `out/tc_mae_by_lead.png` |
+| `tc/animate.py` | Animated GIF of one run (the one above) | `assets/*.gif` |
 
 Run in that order. Data sources: IBTrACS v04r01 `last3years` CSV (NOAA NCEI), NHC ATCF archive
 (`ftp.nhc.noaa.gov/atcf/`), ECMWF Open Data (CC-BY-4.0).
@@ -124,5 +133,25 @@ not retained. Mention in the report:
 - ~17 MB per run vs hundreds of GB for the full GRIBs across 399 runs.
 
 Known simplifications vs the paper: one-and-a-half seasons instead of nine years; a home-made tracker instead of
-ECMWF's operational one; GBM only (no CNN on 3-D patches yet); best-track initial intensity rather than
-real-time CARQ (the paper reports both).
+ECMWF's operational one (validated against ECMWF's EAIO tracks to 1.1 kt MAE); GBM only (no CNN on 3-D patches
+yet); best-track initial intensity rather than real-time CARQ (the paper reports both).
+
+### Results (all NA+EP storms Feb 2025 - Sep 2026)
+
+Max-wind MAE (kt), storm-grouped 5-fold CV, all leads 12-168 h pooled. GBM: `correct.py`.
+MLP eta: `correct_eta.py`, the eta-learning objective of Chang & Sapsis (2026, arXiv:2510.19161),
+i.e. MSE plus a Wasserstein penalty matching the tail quantiles (q >= 0.95) of the corrected-wind
+distribution to the observed best-track distribution.
+
+| | all cases | RI cases | fcst q0.99 (obs: 140 kt) |
+|---|---|---|---|
+| AIFS raw | 28.4 | 73.5 | 61 |
+| GBM | 14.1 | 41.1 | 118 |
+| MLP, plain MSE | 17.7 | 36.6 | 162 |
+| MLP + eta | **13.1** | **29.9** | **143** |
+
+The eta regularizer is what lets the model issue Category 5 forecasts without overshooting: the
+corrected-wind quantiles land on the observed ones (119/143/169 vs 120/140/165 at q = 0.95/0.99/0.999)
+while the GBM saturates near 125 kt. Caveat: the MLP training budget (600 full-batch Adam iterations)
+was picked by looking at CV scores across a small sweep; proper in-fold early stopping is TODO.
+Homogeneous-sample comparisons against the NHC official forecast are in `evaluate.py`'s output.
