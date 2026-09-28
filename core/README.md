@@ -1,13 +1,13 @@
 # scmp-5990 rebuild
 
-Rebuilding the modeling core of this repo by hand, to own it. Local only, never pushed.
+Rebuilding the modeling core of this repo by hand, to own it.
 
 ## Rules
 
 1. Write each piece from scratch before looking at the repo's version. Compare numbers
    (TARGETS.md), then compare code.
-2. Claude is a TA here: ask it questions, have it review or quiz, but it does not write
-   the code in this directory.
+2. Any AI assistant is a TA here: ask it questions, have it review or quiz, but it does
+   not write the code in this directory.
 3. Matching a target within ~0.2 kt = that step is owned. Move on.
 
 ## Data
