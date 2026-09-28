@@ -63,9 +63,9 @@ FEATURES = ["step", "lat", "lon", "is_ep", "aifs_v2", "doy_sin", "doy_cos", "vma
             "aifs_dvmax", "aifs_vmax_runmax", "aifs_pmin_runmin", "aifs_dvmax_6h", "speed_kmh",
             "obs0_wind", "obs0_pres", "obs_dwind_12h", "obs_dwind_24h", "age_h", "init_bias"]
 
-def fit_predict_cv(df, target, groups, n_splits=5, seeds=(0, 1, 2, 3, 4)):
+def fit_predict_cv(df, target, groups, n_splits=5, seeds=(0, 1, 2, 3, 4), ri_weight=None):
     pred = np.zeros(len(df)); X = df[FEATURES].values; y = df[target].values
-    w = np.where(df.ri.values == 1, RI_WEIGHT, 1.0)
+    w = np.where(df.ri.values == 1, RI_WEIGHT if ri_weight is None else ri_weight, 1.0)
     for tr_idx, te_idx in GroupKFold(n_splits=n_splits).split(X, y, groups):
         p = np.zeros(len(te_idx))
         for s in seeds:

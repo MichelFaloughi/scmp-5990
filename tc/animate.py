@@ -1,7 +1,8 @@
 """Animate one AIFS run: 10 m wind speed + MSLP contours through all lead times,
 with the tracked storms drawn up to the current step.
 
-Usage: python tc/animate.py 2026090200 [out.gif]     -> assets/aifs_<init>.gif
+Usage: python tc/animate.py 2026090200 [out.gif] [--tracks tracks.csv]
+       -> assets/aifs_<init>.gif; --tracks overrides data/tc/aifs_tracks.csv
 """
 import os, sys
 
@@ -17,8 +18,14 @@ from plot_tc import SURFACE, INK, INK2, MUTED, GRID, ORANGE, SEQ, style, coastli
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-init = sys.argv[1]
-out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "assets", f"aifs_{init}.gif")
+args = sys.argv[1:]
+tracks_csv = os.path.join(ROOT, "data", "tc", "aifs_tracks.csv")
+if "--tracks" in args:
+    i = args.index("--tracks")
+    tracks_csv = args[i + 1]
+    del args[i:i + 2]
+init = args[0]
+out = args[1] if len(args) > 1 else os.path.join(ROOT, "assets", f"aifs_{init}.gif")
 os.makedirs(os.path.dirname(out), exist_ok=True)
 
 d = np.load(os.path.join(ROOT, "data", "aifs", f"{init}.npz"))
@@ -26,7 +33,7 @@ steps, lats, lons = d["steps"], d["lats"], d["lons"]
 wspd = np.hypot(d["u10"].astype(np.float32), d["v10"].astype(np.float32))
 msl = d["msl"] / 100.0
 
-tr = pd.read_csv(os.path.join(ROOT, "data", "tc", "aifs_tracks.csv"), parse_dates=["init", "valid"])
+tr = pd.read_csv(tracks_csv, parse_dates=["init", "valid"])
 tr = tr[tr.init == pd.Timestamp(f"{init[:8]} {init[8:]}:00")]
 
 fig, ax = plt.subplots(figsize=(8, 4.2), facecolor=SURFACE)

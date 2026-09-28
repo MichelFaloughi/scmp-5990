@@ -12,8 +12,13 @@ and lambda is set by gradient-norm balancing. Same storm-grouped 5-fold CV as th
 
 An identical MLP trained with MSE only (ERM) isolates the effect of the regularizer.
 
-Output: data/tc/aifs_tracks_eta.csv (adds eta_vmax_kt, erm_vmax_kt) + comparison tables.
-Usage : python tc/correct_eta.py [--iters 3000] [--tau 0.95]
+With --nu0-1980, a third variant is trained whose nu_0 is the NA+EP best-track wind
+distribution since 1980 (IBTrACS satellite era) instead of the training fold: the version
+that imports climatological information rather than recalibrating the training data.
+
+Output: data/tc/aifs_tracks_eta.csv (adds eta_vmax_kt, erm_vmax_kt [, eta1980_vmax_kt])
+        + comparison tables.
+Usage : python tc/correct_eta.py [--iters 3000] [--tau 0.95] [--nu0-1980]
 """
 import os, sys, time
 
@@ -29,7 +34,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ITERS = int(sys.argv[sys.argv.index("--iters") + 1]) if "--iters" in sys.argv else 3000
 TAU = float(sys.argv[sys.argv.index("--tau") + 1]) if "--tau" in sys.argv else 0.95
 N_Q, SEEDS, HID = 25, (0, 1, 2), 64
+NU0_1980 = "--nu0-1980" in sys.argv
 torch.set_num_threads(4)
+
+
+def load_nu0_since1980():
+    """NA+EP 6-hourly best-track winds 1980-present: the climatological nu_0."""
+    d = pd.read_csv(f"{ROOT}/data/ibtracs/ibtracs.since1980.csv", skiprows=[1],
+                    usecols=["BASIN", "USA_WIND"], low_memory=False,
+                    keep_default_na=False, na_values=[" ", ""])
+    w = pd.to_numeric(d[d.BASIN.isin(["NA", "EP"])].USA_WIND, errors="coerce").dropna()
+    return w.values.astype(np.float64)
 
 
 def mlp(d_in, seed):
@@ -44,20 +59,23 @@ def grad_norm(loss, model):
     return torch.sqrt(sum((x ** 2).sum() for x in g if x is not None))
 
 
-def fit(X, y, vmax0, bt_wind, seed, use_eta):
+def fit(X, y, vmax0, bt_wind, seed, use_eta, w=None):
     """X standardized features, y residual target, vmax0 raw AIFS wind (for the observable),
-    bt_wind observed winds defining nu_0. Full-batch Adam."""
+    bt_wind observed winds defining nu_0, w optional per-case weights (RI weighting).
+    Full-batch Adam."""
     model = mlp(X.shape[1], seed)
     opt = torch.optim.Adam(model.parameters(), lr=3e-3)
     X, y, vmax0 = map(torch.as_tensor, (X, y, vmax0))
     X, y, vmax0 = X.float(), y.float(), vmax0.float()
+    if w is not None:
+        w = torch.as_tensor(w).float()
     q = torch.linspace(TAU, 0.999, N_Q)
     ref_q = torch.quantile(torch.as_tensor(bt_wind).float(), q)   # F^-1_{nu_0}(q_i), fixed
     lam = 0.0
     for it in range(ITERS):
         opt.zero_grad()
         pred = model(X).squeeze(-1)
-        l_erm = ((pred - y) ** 2).mean()
+        l_erm = ((pred - y) ** 2).mean() if w is None else ((w * (pred - y) ** 2).sum() / w.sum())
         if use_eta:
             corr = vmax0 + pred                                   # observable g(phi(x))
             l_w1 = (torch.quantile(corr, q) - ref_q).abs().mean() # eq. 15, tail quantiles
@@ -76,9 +94,12 @@ def predict(model, X):
         return model(torch.as_tensor(X).float()).squeeze(-1).numpy()
 
 
-def cv_predict(lab, use_eta):
+def cv_predict(lab, use_eta, nu0_wind=None, ri_w=1.0):
+    """nu0_wind: fixed reference winds for nu_0; default is the training fold's best track.
+    ri_w: weight on observed-RI cases in the MSE term (the GBM uses 2.0)."""
     X_all = lab[FEATURES].values.astype(np.float64)
     y_all = lab.res_v.values
+    w_all = np.where(lab.ri.values == 1, ri_w, 1.0) if ri_w != 1.0 else None
     pred = np.zeros(len(lab))
     for tr_i, te_i in GroupKFold(n_splits=5).split(X_all, y_all, lab.sid.values):
         med = np.nanmedian(X_all[tr_i], axis=0)                   # impute + standardize on train only
@@ -88,8 +109,10 @@ def cv_predict(lab, use_eta):
         mu, sd = Xtr.mean(0), Xtr.std(0) + 1e-8
         Xtr, Xte = (Xtr - mu) / sd, (Xte - mu) / sd
         p = np.zeros(len(te_i))
+        ref = nu0_wind if nu0_wind is not None else lab.bt_wind_kt.values[tr_i]
         for s in SEEDS:
-            m = fit(Xtr, y_all[tr_i], lab.vmax_kt.values[tr_i], lab.bt_wind_kt.values[tr_i], s, use_eta)
+            m = fit(Xtr, y_all[tr_i], lab.vmax_kt.values[tr_i], ref, s, use_eta,
+                    w=None if w_all is None else w_all[tr_i])
             p += predict(m, Xte) / len(SEEDS)
         pred[te_i] = p
     return pred
@@ -131,6 +154,16 @@ if __name__ == "__main__":
     lab["eta_vmax_kt"] = lab.vmax_kt + cv_predict(lab, use_eta=True)
     print(f"eta MLP done ({time.time() - t0:.0f}s)")
 
+    cols = {"AIFS raw": "vmax_kt", "GBM": "corr_vmax_kt", "MLP ERM": "erm_vmax_kt", "MLP eta": "eta_vmax_kt"}
+    if NU0_1980:
+        nu0 = load_nu0_since1980()
+        print(f"nu_0 since1980: {len(nu0)} fixes, q95={np.quantile(nu0, .95):.0f} "
+              f"q99={np.quantile(nu0, .99):.0f} q999={np.quantile(nu0, .999):.0f} kt")
+        t0 = time.time()
+        lab["eta1980_vmax_kt"] = lab.vmax_kt + cv_predict(lab, use_eta=True, nu0_wind=nu0)
+        print(f"eta-1980 MLP done ({time.time() - t0:.0f}s)")
+        cols["eta 1980"] = "eta1980_vmax_kt"
+
     lab.to_csv(f"{ROOT}/data/tc/aifs_tracks_eta.csv", index=False)
     print("wrote data/tc/aifs_tracks_eta.csv")
-    report(lab, {"AIFS raw": "vmax_kt", "GBM": "corr_vmax_kt", "MLP ERM": "erm_vmax_kt", "MLP eta": "eta_vmax_kt"})
+    report(lab, cols)

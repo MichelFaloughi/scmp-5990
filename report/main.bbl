@@ -1,0 +1,41 @@
+\begin{thebibliography}{4}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Allen et~al.(2026)Allen, Bruinsma, Maier-Gerber, Cook, Chantry, and
+  Turner]{allen2026aifstc}
+Anna Allen, Wessel~P. Bruinsma, Michael Maier-Gerber, Harrison Cook, Matthew
+  Chantry, and Richard~E. Turner.
+\newblock {AIFS-TC}: A simple correction competitive with the operational
+  frontier for tropical cyclone intensity forecasting.
+\newblock \emph{arXiv preprint arXiv:2608.09959}, 2026.
+
+\bibitem[{Google DeepMind}(2025)]{deepmind2025weatherlab}
+{Google DeepMind}.
+\newblock Weather {Lab}: experimental {AI} tropical cyclone predictions.
+\newblock \url{https://deepmind.google/science/weatherlab}, 2025.
+\newblock Ensemble mean appears in ATCF a-decks as GDMN.
+
+\bibitem[Knapp et~al.(2010)Knapp, Kruk, Levinson, Diamond, and
+  Neumann]{knapp2010ibtracs}
+Kenneth~R. Knapp, Michael~C. Kruk, David~H. Levinson, Howard~J. Diamond, and
+  Charles~J. Neumann.
+\newblock The international best track archive for climate stewardship
+  ({IBTrACS}): Unifying tropical cyclone data.
+\newblock \emph{Bulletin of the American Meteorological Society}, 91\penalty0
+  (3):\penalty0 363--376, 2010.
+
+\bibitem[Lang et~al.(2024)Lang, Alexe, Chantry, Dramsch, Pinault, Raoult,
+  Clare, Lessig, Maier-Gerber, Magnusson, Bouall{\`e}gue, Nemesio, Dueben,
+  Brown, Pappenberger, and Rabier]{lang2024aifs}
+Simon Lang, Mihai Alexe, Matthew Chantry, Jesper Dramsch, Florian Pinault,
+  Baudouin Raoult, Mariana C.~A. Clare, Christian Lessig, Michael Maier-Gerber,
+  Linus Magnusson, Zied~Ben Bouall{\`e}gue, Ana~Prieto Nemesio, Peter~D.
+  Dueben, Andrew Brown, Florian Pappenberger, and Florence Rabier.
+\newblock {AIFS}: {ECMWF}'s data-driven forecasting system.
+\newblock \emph{arXiv preprint arXiv:2406.01465}, 2024.
+
+\end{thebibliography}
