@@ -1,7 +1,7 @@
 """Headline figure: max-wind MAE by lead time, raw AIFS vs GBM-corrected vs NHC OFCL.
 
 Reads the first table of data/tc/RESULTS_tables.md (written by evaluate.py).
-Usage: python pipeline/plot_results.py   -> out/tc_mae_by_lead.png
+Usage: python pipeline/plot_results.py   -> data/out/tc_mae_by_lead.png
 """
 import os, re
 
@@ -41,6 +41,6 @@ ax.set_ylabel("max-wind MAE (kt)", color=INK2)
 ax.legend(loc="upper left", fontsize=9, framealpha=0.9, facecolor=SURFACE,
           edgecolor=GRID, labelcolor=INK2)
 ax.set_title("Intensity error by lead time, homogeneous sample", fontsize=11, color=INK, loc="left")
-out = os.path.join(ROOT, "out", "tc_mae_by_lead.png")
+out = os.path.join(ROOT, "data", "out", "tc_mae_by_lead.png")
 fig.savefig(out, dpi=150, bbox_inches="tight", facecolor=SURFACE)
 print("wrote", out)

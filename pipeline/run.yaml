@@ -1,7 +1,7 @@
 description: |
   AIFS-single 2.0
 
-checkpoint: model/aifs-single-mse-2.0.ckpt
+checkpoint: data/model/aifs-single-mse-2.0.ckpt
 
 input: opendata
 
@@ -13,7 +13,7 @@ pre_processors:
         - sd
         - swvl1
         - swvl2
-      path: model/lsm.grib
+      path: data/model/lsm.grib
       mask_value: 0
 
 post_processors:
@@ -45,7 +45,7 @@ typed_variables:
 
 output:
   grib:
-    path: out/aifs_test.grib
+    path: data/out/aifs_test.grib
     encoding:
       class: ai
       type: fc

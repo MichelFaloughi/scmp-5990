@@ -3,7 +3,7 @@
 Usage:
   python pipeline/plot_tc.py map 2026090100 48          # wind speed + MSLP from data/aifs/2026090100.npz at +48h
   python pipeline/plot_tc.py intensity LOWELL           # vmax vs time: best track + every AIFS forecast
-Outputs land in out/.
+Outputs land in data/out/.
 """
 import os, sys
 
@@ -41,7 +41,7 @@ def coastlines(ax):
     """Land outline from the model's land-sea mask (reduced grid, hence tricontour)."""
     try:
         import earthkit.data as ekd
-        f = ekd.from_source("file", os.path.join(ROOT, "model", "lsm.grib"))[0]
+        f = ekd.from_source("file", os.path.join(ROOT, "data", "model", "lsm.grib"))[0]
         lats, lons = f.grid_points()
         lons = np.where(lons > 180, lons - 360, lons)
         keep = (lats > -5) & (lats < 65) & (lons > -185) & (lons < 5)
@@ -92,7 +92,7 @@ def plot_map(init, step):
     fig.colorbar(pm, ax=ax, shrink=0.85, pad=0.02, label="10 m wind speed (m/s)")
     ax.set_title(f"AIFS-Single  init {init[:8]} {init[8:]}Z  +{step}h   "
                  f"MSLP contours every 4 hPa", fontsize=11, color=INK, loc="left")
-    out = os.path.join(ROOT, "out", f"tc_map_{init}_{step:03d}h.png")
+    out = os.path.join(ROOT, "data", "out", f"tc_map_{init}_{step:03d}h.png")
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor=SURFACE)
     print("wrote", out)
 
@@ -125,7 +125,7 @@ def plot_intensity(name):
     ax.set_title(f"{name.upper()} ({sid})   best-track intensity vs raw AIFS forecasts",
                  fontsize=11, color=INK, loc="left")
     fig.autofmt_xdate()
-    out = os.path.join(ROOT, "out", f"tc_intensity_{name.lower()}.png")
+    out = os.path.join(ROOT, "data", "out", f"tc_intensity_{name.lower()}.png")
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor=SURFACE)
     print("wrote", out)
 

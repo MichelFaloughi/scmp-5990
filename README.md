@@ -12,9 +12,9 @@ Runs ECMWF's open AI weather model on a laptop CPU (tested on Apple M5, 32 GB RA
 
 | Path | What |
 |---|---|
-| `model/` | Downloaded from Hugging Face `ecmwf/aifs-single-2.0`: weights (`.ckpt`, 948 MB), ECMWF's `inference.yaml`, land-sea mask `lsm.grib`. Not committed. |
+| `data/model/` | Downloaded from Hugging Face `ecmwf/aifs-single-2.0`: weights (`.ckpt`, 948 MB), ECMWF's `inference.yaml`, land-sea mask `lsm.grib`. Not committed. |
 | `pipeline/run.yaml` | Copy of ECMWF's config with local paths, `device: cpu`, and a short `lead_time`. |
-| `out/` | Forecast output (GRIB) and run logs. Not committed. |
+| `data/out/` | Forecast output (GRIB) and run logs. Not committed. |
 
 ## Setup
 
@@ -42,7 +42,7 @@ Versions are ECMWF's own pins from the model repo's `pyproject.toml`, minus `fla
 - `pipeline/run_aifs.py` is `anemoi-inference run` plus three compatibility shims (see Gotchas). On Linux with an
   NVIDIA GPU and flash-attn installed, `anemoi-inference run pipeline/run.yaml` works directly (shim 1 still applies).
 - Initial conditions are fetched automatically from ECMWF Open Data (latest cycle and the one 6 h before).
-- Output lands in `out/aifs_test.grib`. Change `lead_time` in `pipeline/run.yaml` for longer forecasts (default 240 h).
+- Output lands in `data/out/aifs_test.grib`. Change `lead_time` in `pipeline/run.yaml` for longer forecasts (default 240 h).
 
 ## Measured (Apple M5, 32 GB, CPU only, 6 h forecast)
 
@@ -52,7 +52,7 @@ Versions are ECMWF's own pins from the model repo's `pyproject.toml`, minus `fla
 | Model load | 3 s |
 | One 6 h step | 14 min 54 s, ~4 cores busy |
 | Peak memory | 8.6 GB |
-| Output | `out/aifs_test.grib`, 107 MB, 215 fields at steps 0 and 6 |
+| Output | `data/out/aifs_test.grib`, 107 MB, 215 fields at steps 0 and 6 |
 
 A 10-day forecast (40 steps) would take ~10 h at this rate. Fine for a test, not for routine use;
 use a GPU for that.
@@ -60,7 +60,7 @@ use a GPU for that.
 ## Plot
 
 ```bash
-.venv/bin/python pipeline/plot_aifs.py out/aifs_test.grib 2t 6     # -> out/2t_step6.png
+.venv/bin/python pipeline/plot_aifs.py data/out/aifs_test.grib 2t 6     # -> data/out/2t_step6.png
 ```
 
 ## Gotchas
@@ -100,8 +100,8 @@ this uses the ~18 months of operational AIFS-Single output that the ECMWF Open D
 | `pipeline/correct.py` | Features + gradient-boosted residual model, storm-grouped 5-fold CV, RI cases weighted 2x | `data/tc/aifs_tracks_corrected.csv` |
 | `pipeline/evaluate.py` | MAE by lead: raw AIFS vs NHC OFCL vs corrected, homogeneous samples | stdout, `--out` markdown tables |
 | `pipeline/correct_eta.py` | Extreme Event Aware (eta-) learning (Chang & Sapsis 2026): MLP + tail-quantile W1 regularizer, vs an identical plain-MSE MLP | `data/tc/aifs_tracks_eta.csv` |
-| `pipeline/plot_tc.py` | Synoptic maps and per-storm intensity spaghetti plots | `out/*.png` |
-| `pipeline/plot_results.py` | Headline MAE-by-lead figure from the evaluate tables | `out/tc_mae_by_lead.png` |
+| `pipeline/plot_tc.py` | Synoptic maps and per-storm intensity spaghetti plots | `data/out/*.png` |
+| `pipeline/plot_results.py` | Headline MAE-by-lead figure from the evaluate tables | `data/out/tc_mae_by_lead.png` |
 | `pipeline/animate.py` | Animated GIF of one run (the one above) | `pipeline/assets/*.gif` |
 
 Run in that order. Data sources: IBTrACS v04r01 `last3years` CSV (NOAA NCEI), NHC ATCF archive
