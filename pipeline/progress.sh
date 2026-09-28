@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Progress bar for the AIFS archive download. Usage: tc/progress.sh   (or: watch -n 30 tc/progress.sh)
+# Progress bar for the AIFS archive download. Usage: pipeline/progress.sh   (or: watch -n 30 pipeline/progress.sh)
 cd "$(dirname "$0")/.." || exit 1
 total=$(( $(wc -l < data/tc/inits.csv) - 1 ))
 done_=$(ls data/aifs/*.npz 2>/dev/null | wc -l | tr -d ' ')

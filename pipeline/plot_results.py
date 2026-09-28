@@ -1,7 +1,7 @@
 """Headline figure: max-wind MAE by lead time, raw AIFS vs GBM-corrected vs NHC OFCL.
 
 Reads the first table of data/tc/RESULTS_tables.md (written by evaluate.py).
-Usage: python tc/plot_results.py   -> out/tc_mae_by_lead.png
+Usage: python pipeline/plot_results.py   -> out/tc_mae_by_lead.png
 """
 import os, re
 

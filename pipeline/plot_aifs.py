@@ -1,6 +1,6 @@
 """Plot one field from an AIFS GRIB output.
 
-Usage: python plot_aifs.py out/aifs_test.grib [param] [step_hours]
+Usage: python pipeline/plot_aifs.py out/aifs_test.grib [param] [step_hours]
 Defaults: param=2t, last step in the file.
 """
 import sys

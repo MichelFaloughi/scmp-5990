@@ -1,8 +1,8 @@
 """Visualize the Mini AIFS-TC data.
 
 Usage:
-  python tc/plot_tc.py map 2026090100 48          # wind speed + MSLP from data/aifs/2026090100.npz at +48h
-  python tc/plot_tc.py intensity LOWELL           # vmax vs time: best track + every AIFS forecast
+  python pipeline/plot_tc.py map 2026090100 48          # wind speed + MSLP from data/aifs/2026090100.npz at +48h
+  python pipeline/plot_tc.py intensity LOWELL           # vmax vs time: best track + every AIFS forecast
 Outputs land in out/.
 """
 import os, sys

@@ -7,7 +7,7 @@ under the same storm-grouped 5-fold CV so each factor varies one at a time:
     GBM w1, GBM w2, MLP ERM w1, MLP ERM w2, MLP eta w1, MLP eta w2
 
 Output: data/tc/ablation.csv (per-case predictions, one column per cell)
-Usage : python tc/ablation.py [--iters 600]
+Usage : python pipeline/ablation.py [--iters 600]
 """
 import os, sys, time
 

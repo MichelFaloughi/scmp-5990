@@ -1,6 +1,6 @@
 """Run anemoi-inference (AIFS-Single 2.0) on a machine without CUDA / flash-attn.
 
-Usage:  python run_aifs.py run.yaml [key=value overrides...]
+Usage:  python pipeline/run_aifs.py pipeline/run.yaml [key=value overrides...]
 
 Three compatibility shims, all needed on macOS / CPU:
 

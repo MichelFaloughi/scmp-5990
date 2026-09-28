@@ -8,7 +8,7 @@ AIFS-Single 1.0 and the 2026 hurricane season is 2.0 (switch 2026-05-12), so
 version survives the next. The aifs_v2 feature is constant within each side,
 so the models cannot use it here.
 
-Usage: python tc/holdout.py [--iters 600]
+Usage: python pipeline/holdout.py [--iters 600]
 """
 import os, sys, time
 

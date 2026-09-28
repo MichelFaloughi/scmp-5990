@@ -9,7 +9,7 @@ For each fetched AIFS run and each storm that exists in best track at init time:
 Matches each forecast point to the best-track fix at the same valid time when available.
 
 Output: data/tc/aifs_tracks.csv
-Usage:  python tc/track.py [YYYYMMDDHH ...]      (default: every file in data/aifs)
+Usage:  python pipeline/track.py [YYYYMMDDHH ...]      (default: every file in data/aifs)
 """
 import glob, os, sys
 import numpy as np, pandas as pd

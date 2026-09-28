@@ -4,7 +4,7 @@ Columns: raw AIFS (our tracker), AIFS + GBM correction, NHC OFCL, and any extra 
 (GDMN = Google DeepMind cyclone model ensemble mean, EAIO = ECMWF's own AIFS tracker).
 Confidence intervals: 95% percentile bootstrap resampling *storms* (not cases), 1000 draws.
 
-Usage: python tc/evaluate.py [--corrected data/tc/aifs_tracks_corrected.csv] [--out data/tc/RESULTS_tables.md]
+Usage: python pipeline/evaluate.py [--corrected data/tc/aifs_tracks_corrected.csv] [--out data/tc/RESULTS_tables.md]
 """
 import os, sys
 import numpy as np, pandas as pd

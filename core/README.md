@@ -13,7 +13,7 @@ Rebuilding the modeling core of this repo by hand, to own it. Local only, never 
 ## Data
 
 - `data/reference.csv`: the labeled dataset, one row per (storm, init, lead) forecast case.
-  All engineered features are already columns (see FEATURES in ../tc/correct.py
+  All engineered features are already columns (see FEATURES in ../pipeline/correct.py
   for the list). Truth is `bt_wind_kt`, raw AIFS is `vmax_kt`, target residual is
   `res_v = bt_wind_kt - vmax_kt`. Also contains the repo's predictions
   (`corr_vmax_kt`, `erm_vmax_kt`, `eta_vmax_kt`, `eta1980_vmax_kt`) for comparison.
@@ -30,7 +30,7 @@ Rebuilding the modeling core of this repo by hand, to own it. Local only, never 
    the same quantiles of the training fold's observed winds, lambda by gradient-norm
    balancing. Match target 5.
 4. **paired_ci.py** - storm bootstrap; then the paired difference version. Match target 6.
-5. Optional: features from the raw inputs; a debugger walk through ../tc/track.py
+5. Optional: features from the raw inputs; a debugger walk through ../pipeline/track.py
    with one storm.
 
 ## Papers

@@ -18,7 +18,7 @@ that imports climatological information rather than recalibrating the training d
 
 Output: data/tc/aifs_tracks_eta.csv (adds eta_vmax_kt, erm_vmax_kt [, eta1980_vmax_kt])
         + comparison tables.
-Usage : python tc/correct_eta.py [--iters 3000] [--tau 0.95] [--nu0-1980]
+Usage : python pipeline/correct_eta.py [--iters 3000] [--tau 0.95] [--nu0-1980]
 """
 import os, sys, time
 

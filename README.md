@@ -1,10 +1,10 @@
 # scmp-5990 — running ECMWF AIFS-Single 2.0 locally
 
-![AIFS forecast animation: hurricanes Lowell, Karina and Marie](assets/aifs_2026090200.gif)
+![AIFS forecast animation: hurricanes Lowell, Karina and Marie](pipeline/assets/aifs_2026090200.gif)
 
 *One AIFS run (2026-09-02 00Z) through +168 h: 10 m wind speed, MSLP contours, and this repo's
-tracker following hurricanes Lowell, Karina and Marie. Made with `tc/animate.py`; see the
-[Mini AIFS-TC](#mini-aifs-tc-tc) section.*
+tracker following hurricanes Lowell, Karina and Marie. Made with `pipeline/animate.py`; see the
+[Mini AIFS-TC](#mini-aifs-tc-pipeline) section.*
 
 Runs ECMWF's open AI weather model on a laptop CPU (tested on Apple M5, 32 GB RAM).
 
@@ -13,7 +13,7 @@ Runs ECMWF's open AI weather model on a laptop CPU (tested on Apple M5, 32 GB RA
 | Path | What |
 |---|---|
 | `model/` | Downloaded from Hugging Face `ecmwf/aifs-single-2.0`: weights (`.ckpt`, 948 MB), ECMWF's `inference.yaml`, land-sea mask `lsm.grib`. Not committed. |
-| `run.yaml` | Copy of ECMWF's config with local paths, `device: cpu`, and a short `lead_time`. |
+| `pipeline/run.yaml` | Copy of ECMWF's config with local paths, `device: cpu`, and a short `lead_time`. |
 | `out/` | Forecast output (GRIB) and run logs. Not committed. |
 
 ## Setup
@@ -36,13 +36,13 @@ Versions are ECMWF's own pins from the model repo's `pyproject.toml`, minus `fla
 ## Run
 
 ```bash
-.venv/bin/python run_aifs.py run.yaml
+.venv/bin/python pipeline/run_aifs.py pipeline/run.yaml
 ```
 
-- `run_aifs.py` is `anemoi-inference run` plus three compatibility shims (see Gotchas). On Linux with an
-  NVIDIA GPU and flash-attn installed, `anemoi-inference run run.yaml` works directly (shim 1 still applies).
+- `pipeline/run_aifs.py` is `anemoi-inference run` plus three compatibility shims (see Gotchas). On Linux with an
+  NVIDIA GPU and flash-attn installed, `anemoi-inference run pipeline/run.yaml` works directly (shim 1 still applies).
 - Initial conditions are fetched automatically from ECMWF Open Data (latest cycle and the one 6 h before).
-- Output lands in `out/aifs_test.grib`. Change `lead_time` in `run.yaml` for longer forecasts (default 240 h).
+- Output lands in `out/aifs_test.grib`. Change `lead_time` in `pipeline/run.yaml` for longer forecasts (default 240 h).
 
 ## Measured (Apple M5, 32 GB, CPU only, 6 h forecast)
 
@@ -60,23 +60,23 @@ use a GPU for that.
 ## Plot
 
 ```bash
-.venv/bin/python plot_aifs.py out/aifs_test.grib 2t 6     # -> out/2t_step6.png
+.venv/bin/python pipeline/plot_aifs.py out/aifs_test.grib 2t 6     # -> out/2t_step6.png
 ```
 
 ## Gotchas
 
-- **`KeyError: 'z'` at startup** (`anemoi-inference run run.yaml`). ECMWF pins `anemoi-transform==0.1.16.post2`
+- **`KeyError: 'z'` at startup** (`anemoi-inference run pipeline/run.yaml`). ECMWF pins `anemoi-transform==0.1.16.post2`
   because AIFS 2.0's config uses `apply-mask` with a `param:` option that exists only in that backport. But the
   Open Data input plugin (0.2.1) expects the attribute names `orography`/`geopotential` from anemoi-transform
   0.1.17+, while 0.1.16.post2 reads `orog`/`z`. ECMWF's notebook builds the input by hand and never touches
   the plugin, so they didn't hit it. Bumping anemoi-transform breaks `apply-mask` instead (`unexpected keyword
-  argument 'param'`). `run_aifs.py` patches the plugin class to carry both spellings.
+  argument 'param'`). `pipeline/run_aifs.py` patches the plugin class to carry both spellings.
 - **`ModuleNotFoundError: No module named 'flash_attn'` while loading the checkpoint.** The pickled model
   holds a reference to `flash_attn.flash_attn_interface.flash_attn_func`, so `torch.load` needs the module to
-  exist even if it is never called. `run_aifs.py` registers a stub.
+  exist even if it is never called. `pipeline/run_aifs.py` registers a stub.
 - **Attention memory on CPU.** anemoi-models 0.9.3 has an SDPA fallback, but it builds the full
   40320 x 40320 attention matrix per head (~100 GB). AIFS uses sliding-window attention (|i-j| <= 1120), so
-  `run_aifs.py` swaps every attention layer for a banded implementation that only computes the window.
+  `pipeline/run_aifs.py` swaps every attention layer for a banded implementation that only computes the window.
   Verified equal to the full-mask reference to ~1e-7. Block size via `AIFS_ATTN_BLOCK` (default 2048).
   (Newer anemoi-models has an `ANEMOI_INFERENCE_TRANSFORMER_ATTENTION_BACKEND` env var; 0.9.3 does not.)
 - **No CUDA / no flash-attn on macOS.** Hence `device: cpu`. `mps` is untested.
@@ -84,7 +84,7 @@ use a GPU for that.
 
 ---
 
-# Mini AIFS-TC (`tc/`)
+# Mini AIFS-TC (`pipeline/`)
 
 A scaled-down reproduction of Allen et al. 2026, *AIFS-TC* (arXiv 2608.09959): learn a cheap correction to
 AIFS-Single's tropical-cyclone intensity forecasts. The paper trains on nine years of ECMWF-internal hindcasts;
@@ -93,16 +93,16 @@ this uses the ~18 months of operational AIFS-Single output that the ECMWF Open D
 
 | Script | Does | Output |
 |---|---|---|
-| `tc/catalog.py` | Storms + 6-hourly best track from IBTrACS (NA + EP, 2025-) and the list of 00/12Z AIFS runs to fetch | `data/tc/{storms,besttrack,inits}.csv` |
-| `tc/fetch_aifs.py` | Byte-range fetch of `msl`, `10u`, `10v` for steps 0-168 h, cropped to 0-60N / 180W-0, ~17 MB per run | `data/aifs/YYYYMMDDHH.npz` |
-| `tc/track.py` | Tracker: follow the MSLP minimum from the best-track seed; vmax = max 10 m wind within 250 km | `data/tc/aifs_tracks.csv` |
-| `tc/atcf.py` | Parse NHC a-decks for OFCL (official forecast) and CARQ | `data/tc/ofcl.csv` |
-| `tc/correct.py` | Features + gradient-boosted residual model, storm-grouped 5-fold CV, RI cases weighted 2x | `data/tc/aifs_tracks_corrected.csv` |
-| `tc/evaluate.py` | MAE by lead: raw AIFS vs NHC OFCL vs corrected, homogeneous samples | stdout, `--out` markdown tables |
-| `tc/correct_eta.py` | Extreme Event Aware (eta-) learning (Chang & Sapsis 2026): MLP + tail-quantile W1 regularizer, vs an identical plain-MSE MLP | `data/tc/aifs_tracks_eta.csv` |
-| `tc/plot_tc.py` | Synoptic maps and per-storm intensity spaghetti plots | `out/*.png` |
-| `tc/plot_results.py` | Headline MAE-by-lead figure from the evaluate tables | `out/tc_mae_by_lead.png` |
-| `tc/animate.py` | Animated GIF of one run (the one above) | `assets/*.gif` |
+| `pipeline/catalog.py` | Storms + 6-hourly best track from IBTrACS (NA + EP, 2025-) and the list of 00/12Z AIFS runs to fetch | `data/tc/{storms,besttrack,inits}.csv` |
+| `pipeline/fetch_aifs.py` | Byte-range fetch of `msl`, `10u`, `10v` for steps 0-168 h, cropped to 0-60N / 180W-0, ~17 MB per run | `data/aifs/YYYYMMDDHH.npz` |
+| `pipeline/track.py` | Tracker: follow the MSLP minimum from the best-track seed; vmax = max 10 m wind within 250 km | `data/tc/aifs_tracks.csv` |
+| `pipeline/atcf.py` | Parse NHC a-decks for OFCL (official forecast) and CARQ | `data/tc/ofcl.csv` |
+| `pipeline/correct.py` | Features + gradient-boosted residual model, storm-grouped 5-fold CV, RI cases weighted 2x | `data/tc/aifs_tracks_corrected.csv` |
+| `pipeline/evaluate.py` | MAE by lead: raw AIFS vs NHC OFCL vs corrected, homogeneous samples | stdout, `--out` markdown tables |
+| `pipeline/correct_eta.py` | Extreme Event Aware (eta-) learning (Chang & Sapsis 2026): MLP + tail-quantile W1 regularizer, vs an identical plain-MSE MLP | `data/tc/aifs_tracks_eta.csv` |
+| `pipeline/plot_tc.py` | Synoptic maps and per-storm intensity spaghetti plots | `out/*.png` |
+| `pipeline/plot_results.py` | Headline MAE-by-lead figure from the evaluate tables | `out/tc_mae_by_lead.png` |
+| `pipeline/animate.py` | Animated GIF of one run (the one above) | `pipeline/assets/*.gif` |
 
 Run in that order. Data sources: IBTrACS v04r01 `last3years` CSV (NOAA NCEI), NHC ATCF archive
 (`ftp.nhc.noaa.gov/atcf/`), ECMWF Open Data (CC-BY-4.0).
@@ -122,7 +122,7 @@ operational forecasts issued on each date, **not** hindcasts:
 
 ### Data caveat: the .npz archives are a lossy reduction of the GRIBs
 
-`tc/fetch_aifs.py` keeps only what the tracker needs and discards the rest; the source GRIB2 files are
+`pipeline/fetch_aifs.py` keeps only what the tracker needs and discards the rest; the source GRIB2 files are
 not retained. Mention in the report:
 
 - **Variables**: only `msl`, `10u`, `10v`. The full AIFS output (dozens of surface and pressure-level

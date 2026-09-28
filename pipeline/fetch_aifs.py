@@ -6,8 +6,8 @@ with HTTP Range requests, decodes them, crops to the NA+EP box and stores compac
 Output: data/aifs/{YYYYMMDDHH}.npz with msl[step,lat,lon] (Pa, f32), u10, v10 (m/s, f16),
         lats, lons, steps.  ~1 MB per step in the box.
 
-Usage:  python tc/fetch_aifs.py 2025090100 [2025090112 ...]
-        python tc/fetch_aifs.py --inits data/tc/inits.csv
+Usage:  python pipeline/fetch_aifs.py 2025090100 [2025090112 ...]
+        python pipeline/fetch_aifs.py --inits data/tc/inits.csv
 """
 import json, os, sys, time
 import numpy as np, requests, pandas as pd

@@ -1,8 +1,8 @@
 """Animate one AIFS run: 10 m wind speed + MSLP contours through all lead times,
 with the tracked storms drawn up to the current step.
 
-Usage: python tc/animate.py 2026090200 [out.gif] [--tracks tracks.csv]
-       -> assets/aifs_<init>.gif; --tracks overrides data/tc/aifs_tracks.csv
+Usage: python pipeline/animate.py 2026090200 [out.gif] [--tracks tracks.csv]
+       -> pipeline/assets/aifs_<init>.gif; --tracks overrides data/tc/aifs_tracks.csv
 """
 import os, sys
 
@@ -25,7 +25,7 @@ if "--tracks" in args:
     tracks_csv = args[i + 1]
     del args[i:i + 2]
 init = args[0]
-out = args[1] if len(args) > 1 else os.path.join(ROOT, "assets", f"aifs_{init}.gif")
+out = args[1] if len(args) > 1 else os.path.join(ROOT, "pipeline", "assets", f"aifs_{init}.gif")
 os.makedirs(os.path.dirname(out), exist_ok=True)
 
 d = np.load(os.path.join(ROOT, "data", "aifs", f"{init}.npz"))

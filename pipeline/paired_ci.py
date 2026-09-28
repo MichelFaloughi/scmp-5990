@@ -7,7 +7,7 @@ differencing inside the draw cancels the shared storm-level noise. A 95%
 interval on the difference that excludes 0 means the gap is distinguishable.
 
 Input : data/tc/aifs_tracks_eta.csv (corr_vmax_kt, erm_vmax_kt, eta_vmax_kt, ...)
-Usage : python tc/paired_ci.py [--n 2000]
+Usage : python pipeline/paired_ci.py [--n 2000]
 """
 import os, sys
 import numpy as np, pandas as pd

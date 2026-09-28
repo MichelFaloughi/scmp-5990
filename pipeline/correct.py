@@ -6,7 +6,7 @@ the operationally-known initial intensity, gradient-boosted trees predicting the
 
 Input : data/tc/aifs_tracks.csv (from track.py), data/tc/besttrack.csv
 Output: data/tc/aifs_tracks_corrected.csv  (adds corr_vmax_kt, corr_pmin_hpa, persist_vmax_kt)
-Usage : python tc/correct.py
+Usage : python pipeline/correct.py
 """
 import os
 import numpy as np, pandas as pd
