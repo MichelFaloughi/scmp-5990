@@ -6,8 +6,9 @@ Rebuilding the modeling core of this repo by hand, to own it.
 
 1. Write each piece from scratch before looking at the repo's version. Compare numbers
    (TARGETS.md), then compare code.
-2. Any AI assistant is a TA here: ask it questions, have it review or quiz, but it does
-   not write the code in this directory.
+2. Exercises 1 to 4 (`gbm.py`, `eta.ipynb`, `paired_ci.ipynb`) were written by hand with an
+   AI assistant acting only as a TA. From 2026-10-27 the later files (`quantile.py`,
+   `fair_baseline.py`) were written with the assistant's help, under time pressure.
 3. Matching a target within ~0.2 kt = that step is owned. Move on.
 
 ## Data
@@ -19,6 +20,9 @@ Rebuilding the modeling core of this repo by hand, to own it.
   (`corr_vmax_kt`, `erm_vmax_kt`, `eta_vmax_kt`, `eta1980_vmax_kt`) for comparison.
 - `data/aifs_tracks.csv`, `data/besttrack.csv`: raw inputs, only needed for the optional
   feature-engineering exercise.
+- `data/ships_features.csv`: SHIPS-style environmental predictors computed from AIFS
+  pressure-level fields by `../pipeline/ships_features.py`, one row per case, joined on
+  (`init`, `sid`, `step`).
 
 ## Exercises, in order
 1. **eval.py** - MAE overall / by lead / RI subset (`ri == 1`), tail quantiles of forecast

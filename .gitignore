@@ -3,3 +3,9 @@ __pycache__/
 data/
 .DS_Store
 .vscode/
+report/*.aux
+report/*.blg
+report/*.fdb_latexmk
+report/*.fls
+report/*.log
+report/*.out
