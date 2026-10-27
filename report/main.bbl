@@ -1,4 +1,4 @@
-\begin{thebibliography}{4}
+\begin{thebibliography}{12}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -13,11 +13,54 @@ Anna Allen, Wessel~P. Bruinsma, Michael Maier-Gerber, Harrison Cook, Matthew
   frontier for tropical cyclone intensity forecasting.
 \newblock \emph{arXiv preprint arXiv:2608.09959}, 2026.
 
+\bibitem[Barber et~al.(2021)Barber, Cand{\`e}s, Ramdas, and
+  Tibshirani]{barber2021cvplus}
+Rina~Foygel Barber, Emmanuel~J. Cand{\`e}s, Aaditya Ramdas, and Ryan~J.
+  Tibshirani.
+\newblock Predictive inference with the jackknife+.
+\newblock \emph{The Annals of Statistics}, 49\penalty0 (1):\penalty0 486--507,
+  2021.
+
+\bibitem[Chang and Sapsis(2026)]{chang2026eta}
+Shih-Chun Chang and Themistoklis~P. Sapsis.
+\newblock Eta-learning: learning to forecast rare and extreme events by
+  matching tail statistics.
+\newblock \emph{arXiv preprint arXiv:2510.19161}, 2026.
+\newblock Accepted, Nature Communications.
+
+\bibitem[DeMaria and Kaplan(1994)]{demaria1994ships}
+Mark DeMaria and John Kaplan.
+\newblock A statistical hurricane intensity prediction scheme ({SHIPS}) for the
+  {Atlantic} basin.
+\newblock \emph{Weather and Forecasting}, 9\penalty0 (2):\penalty0 209--220,
+  1994.
+
+\bibitem[DeMaria et~al.(2005)DeMaria, Mainelli, Shay, Knaff, and
+  Kaplan]{demaria2005ships}
+Mark DeMaria, Michelle Mainelli, Lynn~K. Shay, John~A. Knaff, and John Kaplan.
+\newblock Further improvements to the statistical hurricane intensity
+  prediction scheme ({SHIPS}).
+\newblock \emph{Weather and Forecasting}, 20\penalty0 (4):\penalty0 531--543,
+  2005.
+
+\bibitem[Gneiting and Raftery(2007)]{gneiting2007scoring}
+Tilmann Gneiting and Adrian~E. Raftery.
+\newblock Strictly proper scoring rules, prediction, and estimation.
+\newblock \emph{Journal of the American Statistical Association}, 102\penalty0
+  (477):\penalty0 359--378, 2007.
+
 \bibitem[{Google DeepMind}(2025)]{deepmind2025weatherlab}
 {Google DeepMind}.
 \newblock Weather {Lab}: experimental {AI} tropical cyclone predictions.
 \newblock \url{https://deepmind.google/science/weatherlab}, 2025.
 \newblock Ensemble mean appears in ATCF a-decks as GDMN.
+
+\bibitem[Kaplan and DeMaria(2003)]{kaplan2003ri}
+John Kaplan and Mark DeMaria.
+\newblock Large-scale characteristics of rapidly intensifying tropical cyclones
+  in the {North Atlantic} basin.
+\newblock \emph{Weather and Forecasting}, 18\penalty0 (6):\penalty0 1093--1108,
+  2003.
 
 \bibitem[Knapp et~al.(2010)Knapp, Kruk, Levinson, Diamond, and
   Neumann]{knapp2010ibtracs}
@@ -37,5 +80,18 @@ Simon Lang, Mihai Alexe, Matthew Chantry, Jesper Dramsch, Florian Pinault,
   Dueben, Andrew Brown, Florian Pappenberger, and Florence Rabier.
 \newblock {AIFS}: {ECMWF}'s data-driven forecasting system.
 \newblock \emph{arXiv preprint arXiv:2406.01465}, 2024.
+
+\bibitem[Maraun(2013)]{maraun2013inflation}
+Douglas Maraun.
+\newblock Bias correction, quantile mapping, and downscaling: revisiting the
+  inflation issue.
+\newblock \emph{Journal of Climate}, 26\penalty0 (6):\penalty0 2137--2143,
+  2013.
+
+\bibitem[Romano et~al.(2019)Romano, Patterson, and Cand{\`e}s]{romano2019cqr}
+Yaniv Romano, Evan Patterson, and Emmanuel Cand{\`e}s.
+\newblock Conformalized quantile regression.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~32, 2019.
 
 \end{thebibliography}
