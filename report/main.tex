@@ -291,7 +291,8 @@ calibration, not importing climatology.
 forecast to the observed tail should hurt at long leads, where the best point forecast is less
 extreme than the observations. The reason is visible in the tail itself: at 126--168\,h eta's
 0.99 forecast quantile is 134\,kt against 153 observed, so the penalty is no longer binding
-there. On the temporal holdout (train 2025, test 2026) the picture is unchanged: raw 27.8\,kt,
+there. On the temporal holdout (train 2025, test 2026), which is also the transfer test the advisor
+asked for since 2025 runs are AIFS-Single 1.0 and 2026 runs are 2.0, the picture is unchanged: raw 27.8\,kt,
 GBM 15.8, ERM 22.4, eta 15.6; eta minus GBM $-0.2$\,kt $[-3.0, +3.5]$ overall and $-7.9$\,kt
 $[-15.3, -0.5]$ on RI, the latter resting on four storms.
 
@@ -451,6 +452,13 @@ uniform across cases, however: on RI cases the 80\% interval covers only 35\% in
 observed at 96\,kt or more it covers 51\%. The price of covering ordinary cases honestly while
 being unable to tell which storms will intensify is a wide upper tail: the 0.99 quantile of the
 predicted 95th percentile is 170\,kt in CV against 140 observed. The model knows it does not know.
+The pooled tail of \emph{samples} drawn from the predictive distribution, which is where the
+advisor suggested a tail constraint should apply, already matches the observed tail in
+cross-validation without any penalty: 109, 123 and 149\,kt at levels 0.9, 0.95 and 0.99 against
+110, 120 and 140 observed. The per-level recalibration achieves what the eta penalty achieves for
+a point forecast, and does it on a distribution, where it is coherent. On the 2026 holdout the
+sampled tail is too heavy (137 and 162\,kt at 0.95 and 0.99 against 120 and 135), because the
+offsets were learned on the 2025 storms, which include the two strongest of the record.
 
 \begin{figure}[t]
 \centering
@@ -504,9 +512,15 @@ the reliability diagram (Figure~\ref{fig:rel}) shows why: when the model says 0.
 better in CV ($-0.03$ with SHIPS features, $-0.05$ without), and on the holdout its score flips
 sign with the feature set ($+0.08$ without SHIPS, $-0.48$ with), which with 222 RI cases from
 four storms is noise. Neither the objective nor the environmental predictors turn 15 RI storms
-into a usable RI probability. The eta network's RI advantage of Section~\ref{sec:fair} is a
-gain in the \emph{magnitude} of its forecasts on storms that did intensify, not an ability to
-say in advance which storms will.
+into a usable RI probability. The failure is one of calibration more than of discrimination:
+the quantile-derived probability ranks RI cases above non-RI cases with an area under the ROC
+curve of 0.77 in CV and 0.72 on the holdout (the direct classifier: 0.67 and 0.70), and a warning
+threshold of 0.2 catches 56\% of RI cases in CV at the cost of 81\% false alarms (76\% and 89\%
+on the holdout). An isotonic recalibration of the probabilities, cross-fitted by storm, turns the
+CV Brier skill positive ($+0.05$) but does not transfer to the future season ($-0.18$ when fitted
+on 2025 storms only). The eta network's RI advantage of Section~\ref{sec:fair} is a gain in the
+\emph{magnitude} of its forecasts on storms that did intensify, not an ability to say in advance
+which storms will.
 
 \begin{figure}[t]
 \centering
