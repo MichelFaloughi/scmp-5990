@@ -546,6 +546,27 @@ no forecast input, reaches 17.6\,kt on these storms and beats the AIFS-based cor
 $[-2.8, -1.1]$ with 10 storms) and not with all 41 ($-0.3$ $[-0.7, +0.2]$); a Bayesian
 combination of the archive prior with an AIFS likelihood beat stacking only at 5 training storms
 and was worse on RI. With a full season of paired data the archive adds nothing.
+\emph{Ensemble spread.} From July 2025 the archive also holds the 51-member AIFS-ENS. For the 213
+initialisations from 2 July 2025 that contain an RI storm, each member's maximum 10\,m wind and
+minimum pressure within 250\,km of the deterministic track position were extracted at 6 to
+120\,h (3323 cases, 33 storms, 263 RI cases) and summarised into eleven features: member mean,
+spread, 10th and 90th percentiles, maximum, the control run, their differences from the
+deterministic wind, the fraction of members above it, and the mean and spread of the member
+minimum pressures. Trained and scored on this subset only, with and without the eleven features
+added to base plus SHIPS, the point GBM changes by $+0.4$\,kt $[-0.3, +1.1]$, the quantile
+median by $-0.0$ $[-0.5, +0.5]$, the CRPS by $+0.11$ $[-0.18, +0.57]$, and 80\% coverage stays
+at 80\%; on RI cases the median moves by $-1.7$ $[-4.0, +0.5]$ and the point model by $-0.9$
+$[-3.5, +1.6]$. The spread does carry information: its Spearman correlation with the absolute
+error of the raw forecast is 0.34, and with that of the point correction 0.30. But the quantile
+model already has it from the deterministic features alone: the width of its 10 to 90\%
+interval correlates 0.58 with the member spread and 0.34 with its own median's error, the same
+figure. The member mean sits 0.8\,kt above the deterministic wind on average, yet on the strongest
+storms every member is as weak as the deterministic run (the subset's observed maximum is
+165\,kt; the deterministic run peaks at 66 and the strongest member at 79), so the
+ensemble-minus-deterministic signals correlate negatively with the residual ($-0.34$, and $-0.44$
+for the fraction of members above) and only restate the intensity the GBM already sees. The
+spread would matter for a model that lacks the vortex features; stacked on top of them it adds
+nothing measurable with 33 storms.
 
 \section{Comparison with AIFS-TC}
 
@@ -587,8 +608,8 @@ events, of which this dataset contains 13 storms' worth against the paper's nine
 One and a half seasons versus nine years of training data, and 52 storms of which 15 produced RI
 and 9 reached 120\,kt: every RI or tail statistic in this report rests on a handful of storms, and
 the intervals say so. Two model versions in one dataset, handled only by a feature flag. The GBM
-branch of AIFS-TC only (no CNN over three-dimensional patches), and a single deterministic AIFS
-run: the AIFS ensemble is in the same archive from July 2025 and its spread was not used.
+branch of AIFS-TC only (no CNN over three-dimensional patches), and the ensemble spread tested
+only on the RI-storm subset from July 2025, at leads to 120\,h.
 Best-track initial intensity as a feature where fully operational practice would use the
 real-time CARQ estimate (the paper reports both variants); two basins; leads capped at 168\,h.
 Position errors are measured but not corrected. The eta network was tuned once (the paper's
@@ -600,10 +621,10 @@ chosen after seeing results and are reported as negative findings only.
 \section{Reproducibility}
 
 All code is at \url{https://github.com/MichelFaloughi/scmp-5990}: the data pipeline in
-\texttt{pipeline/} (catalog, fetch, track, correct, evaluate, and the pressure-level fetch and
-SHIPS predictor scripts), the modeling of Sections~\ref{sec:eta} to \ref{sec:prob} in
+\texttt{pipeline/} (catalog, fetch, track, correct, evaluate, the pressure-level fetch and
+SHIPS predictor scripts, and the AIFS-ENS member fetch and spread features), the modeling of Sections~\ref{sec:eta} to \ref{sec:prob} in
 \texttt{core/} (\texttt{gbm.py}, \texttt{eta.ipynb}, \texttt{paired\_ci.ipynb},
-\texttt{fair\_baseline.py}, \texttt{quantile.py}, \texttt{figures.py}). The 7\,GB of surface
+\texttt{fair\_baseline.py}, \texttt{quantile.py}, \texttt{ens\_ablation.py}, \texttt{figures.py}). The 7\,GB of surface
 fields and 23\,GB of pressure-level fields regenerate from public sources with the fetch
 scripts (a few hours over the network); the modeling runs on a laptop in under an hour. Data sources: ECMWF Open Data
 (CC-BY-4.0), IBTrACS v04r01, and the NHC ATCF archive.

@@ -23,6 +23,9 @@ Rebuilding the modeling core of this repo by hand, to own it.
 - `data/ships_features.csv`: SHIPS-style environmental predictors computed from AIFS
   pressure-level fields by `../pipeline/ships_features.py`, one row per case, joined on
   (`init`, `sid`, `step`).
+- `data/ens_features.csv`: AIFS-ENS member spread features (mean, std, percentiles, control,
+  differences from the deterministic wind) from `../pipeline/ens_features.py`, for the 3323 cases
+  of RI-storm inits from 2025-07-02 at leads 6 to 120 h. Used only by `ens_ablation.py`.
 
 ## Exercises, in order
 1. **eval.py** - MAE overall / by lead / RI subset (`ri == 1`), tail quantiles of forecast

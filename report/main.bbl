@@ -22,11 +22,10 @@ Rina~Foygel Barber, Emmanuel~J. Cand{\`e}s, Aaditya Ramdas, and Ryan~J.
   2021.
 
 \bibitem[Chang and Sapsis(2026)]{chang2026eta}
-Shih-Chun Chang and Themistoklis~P. Sapsis.
-\newblock Eta-learning: learning to forecast rare and extreme events by
-  matching tail statistics.
-\newblock \emph{arXiv preprint arXiv:2510.19161}, 2026.
-\newblock Accepted, Nature Communications.
+Kai Chang and Themistoklis~P. Sapsis.
+\newblock {Extreme Event Aware ($\eta$-) Learning}.
+\newblock \emph{Nature Communications}, 2026.
+\newblock arXiv:2510.19161.
 
 \bibitem[DeMaria and Kaplan(1994)]{demaria1994ships}
 Mark DeMaria and John Kaplan.
