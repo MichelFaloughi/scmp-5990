@@ -8,7 +8,8 @@ Rebuilding the modeling core of this repo by hand, to own it.
    (TARGETS.md), then compare code.
 2. Exercises 1 to 4 (`gbm.py`, `eta.ipynb`, `paired_ci.ipynb`) were written by hand with an
    AI assistant acting only as a TA. From 2026-10-27 the later files (`quantile.py`,
-   `fair_baseline.py`) were written with the assistant's help, under time pressure.
+   `fair_baseline.py`, `ens_ablation.py`, `riprob.py`, `ens_ri.py`, `headline.py`) were
+   written with the assistant's help, under time pressure.
 3. Matching a target within ~0.2 kt = that step is owned. Move on.
 
 ## Data
@@ -39,6 +40,20 @@ Rebuilding the modeling core of this repo by hand, to own it.
 4. **paired_ci.py** - storm bootstrap; then the paired difference version. Match target 6.
 5. Optional: features from the raw inputs; a debugger walk through ../pipeline/track.py
    with one storm.
+
+## Later scripts (after the exercises, all run from core/)
+
+- `fair_baseline.py`: eta against a tuned MLP and tuned MLP plus quantile mapping.
+- `quantile.py`: quantile GBM with cross-conformal recalibration, CV and 2026 holdout.
+  Defaults since 2026-11-18: no RI weights, constant offsets per lead band. Flags `--riweight`,
+  `--scaled`, `--carq`, `--noships`, `--raw`.
+- `riprob.py`: P(RI) from a direct quantile model of the observed 24 h change (the version
+  of record). Compares with the intensity-quantile route and a classifier.
+- `ens_ri.py`: P(RI) as the fraction of AIFS-ENS members that intensify, raw and corrected.
+- `ens_ablation.py`: ENS spread as a feature (no gain).
+- `headline.py`: CRPS, tail-weighted CRPS, hit rate and false alarms at 96 and 120 kt for
+  every model, from the prediction files in ../data/out.
+- `figures.py`: report figures.
 
 ## Papers
 

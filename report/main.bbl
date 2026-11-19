@@ -1,4 +1,4 @@
-\begin{thebibliography}{12}
+\begin{thebibliography}{13}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -47,6 +47,13 @@ Tilmann Gneiting and Adrian~E. Raftery.
 \newblock Strictly proper scoring rules, prediction, and estimation.
 \newblock \emph{Journal of the American Statistical Association}, 102\penalty0
   (477):\penalty0 359--378, 2007.
+
+\bibitem[Gneiting and Ranjan(2011)]{gneiting2011twcrps}
+Tilmann Gneiting and Roopesh Ranjan.
+\newblock Comparing density forecasts using threshold- and quantile-weighted
+  scoring rules.
+\newblock \emph{Journal of Business \& Economic Statistics}, 29\penalty0
+  (3):\penalty0 411--422, 2011.
 
 \bibitem[{Google DeepMind}(2025)]{deepmind2025weatherlab}
 {Google DeepMind}.

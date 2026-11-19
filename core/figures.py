@@ -47,6 +47,7 @@ def fig_tails():
 def fig_coverage():
     fig, ax = plt.subplots(figsize=(4.5, 4.2))
     for name, lab, ls in [("quantile_cv_ships_raw", "CV, raw quantiles", ":"), ("quantile_cv_ships", "CV, conformal", "-"),
+                          ("quantile_cv_ships_scaled", "CV, spread-scaled conformal", "-."),
                           ("quantile_holdout_ships", "holdout 2026, conformal", "--")]:
         if not os.path.exists(f"{OUT}/{name}.csv"):
             continue
@@ -58,17 +59,18 @@ def fig_coverage():
     fig.tight_layout(); fig.savefig(f"{FIG}/quantile_calibration.png", dpi=200); plt.close(fig)
 
 def fig_reliability():
+    """P(RI) reliability: the direct 24 h change model (riprob.py) against the two earlier routes."""
     fig, axes = plt.subplots(1, 2, figsize=(9, 3.8))
     bins = [0, 0.05, 0.1, 0.2, 0.3, 0.5, 1.01]
-    for ax, name, title in [(axes[0], "quantile_cv_ships", "storm-grouped CV"), (axes[1], "quantile_holdout_ships", "temporal holdout 2026")]:
-        d = load(name); ri = pd.read_csv(f"{HERE}/data/reference.csv", keep_default_na=False, na_values=[""])[["init", "sid", "step", "ri"]]
-        d = d.merge(ri, on=["init", "sid", "step"])
-        for col, lab in [("p_ri", "quantiles, step >= 24"), ("p_ri_24", "quantiles, step 24"), ("p_ri_cls", "direct classifier, step >= 24")]:
-            if col not in d:
-                continue
-            m = d[col].notna() & (d.step >= 24)
+    for ax, name, title in [(axes[0], "riprob_cv_ships", "storm-grouped CV"), (axes[1], "riprob_holdout_ships", "temporal holdout 2026")]:
+        if not os.path.exists(f"{OUT}/{name}.csv"):
+            continue
+        d = load(name)
+        for col, lab in [("p_ri_dv24", "24 h change model"), ("p_ri_int", "from intensity quantiles"), ("p_ri_cls", "direct classifier")]:
+            m = d[col].notna()
             cut = pd.cut(d.loc[m, col], bins, right=False)
             g = d[m].groupby(cut, observed=True).agg(f=(col, "mean"), o=("ri", "mean"), n=("ri", "size"))
+            g = g[g.n >= 5]
             ax.plot(g.f, g.o, marker="o", label=lab)
             for _, r in g.iterrows():
                 ax.annotate(int(r.n), (r.f, r.o), fontsize=6, xytext=(3, 3), textcoords="offset points")

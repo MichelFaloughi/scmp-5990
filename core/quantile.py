@@ -8,9 +8,16 @@ Reported: MAE of the median, CRPS (quantile approximation), 80% interval coverag
 and P(RI) scored with Brier skill and a reliability table.
 
 Quantiles are recalibrated with a cross-conformal step (see conformal_offsets); --raw skips it.
+Since 2026-11-18 (advisor comments of 2026-11-11) the default has no RI case weights, and the
+P(RI) of record comes from a direct model of the 24 h change (riprob.py). Conformal offsets scaled
+by the predicted spread (--scaled) were tried and score worse by CRPS than constant offsets per
+lead band; the 2x RI weighting (--riweight) is kept only to reproduce the earlier runs.
 
-Run from core/:  python quantile.py            (both evaluations, writes data/out/quantile_*.csv)
-                 python quantile.py --noships  (base features only, for the ablation)
+Run from core/:  python quantile.py              (both evaluations, writes data/out/quantile_*.csv)
+                 python quantile.py --noships    (base features only, for the ablation)
+                 python quantile.py --riweight   (the pre-November configuration)
+                 python quantile.py --scaled     (offsets in units of the predicted 10 to 90 range)
+                 python quantile.py --carq       (CARQ operational initial intensity instead of best track)
 """
 import os, sys
 import numpy as np, pandas as pd
@@ -21,18 +28,49 @@ from common import FEATURES
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "data", "out")
 Q = np.array([0.02, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.98])
+QCOLS = [f"q{int(q * 100):02d}" for q in Q]
 RI_KT = 30.0
+RI_WEIGHT = False      # --riweight: 2x sample weight on RI cases (the pre-November setting)
+SCALED = False         # --scaled: conformal offsets in units of predicted spread instead of knots
 PARAMS = dict(max_iter=300, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=20, l2_regularization=1.0)
 
-def load(ships=True):
+def load(ships=True, carq=False):
     df = pd.read_csv(os.path.join(HERE, "data", "reference.csv"), keep_default_na=False, na_values=[""])
     feats = list(FEATURES)
+    if carq:
+        df = swap_carq(df)
     if ships:
         sf = pd.read_csv(os.path.join(HERE, "data", "ships_features.csv"), keep_default_na=False, na_values=[""])
         df = df.merge(sf, on=["init", "sid", "step"], how="left")
         feats += [c for c in sf.columns if c not in ("init", "sid", "step")]
     df["year"] = pd.to_datetime(df.init).dt.year
     return df, feats
+
+def swap_carq(df):
+    """Replace the best-track initial intensity and its 12 and 24 h tendencies by the CARQ lines of
+    the ATCF a-deck (the operational estimate available at forecast time), where a CARQ exists.
+    Cases without a CARQ keep best track; a column carq=1 marks the swapped ones."""
+    o = pd.read_csv(os.path.join(HERE, "..", "data", "tc", "ofcl.csv"))
+    c = o[o.tech == "CARQ"].pivot_table(index=["atcf_id", "init"], columns="lead", values=["vmax_kt", "pmin_hpa"])
+    c.columns = [f"{a}_{b}" for a, b in c.columns]; c = c.reset_index()
+    c["init"] = c.init.astype(str)
+    bt = pd.read_csv(os.path.join(HERE, "data", "besttrack.csv"), keep_default_na=False, na_values=[""])
+    ids = bt[["SID", "USA_ATCF_ID"]].drop_duplicates().rename(columns={"SID": "sid", "USA_ATCF_ID": "atcf_id"})
+    df = df.merge(ids, on="sid", how="left").merge(c, on=["atcf_id", "init"], how="left")
+    ok = df["vmax_kt_0"].notna()
+    df["carq"] = ok.astype(int)
+    dev = np.abs(df.loc[ok, "vmax_kt_0"] - df.loc[ok, "obs0_wind"]).mean()
+    df.loc[ok, "obs0_wind"] = df.loc[ok, "vmax_kt_0"]
+    df.loc[ok, "obs0_pres"] = df.loc[ok, "pmin_hpa_0"].fillna(df.loc[ok, "obs0_pres"])
+    df.loc[ok, "obs_dwind_12h"] = df.loc[ok, "vmax_kt_0"] - df.loc[ok, "vmax_kt_-12"]
+    df.loc[ok, "obs_dwind_24h"] = df.loc[ok, "vmax_kt_0"] - df.loc[ok, "vmax_kt_-24"]
+    df.loc[ok, "init_bias"] = df.loc[ok, "aifs0_vmax"] - df.loc[ok, "obs0_wind"]
+    print(f"CARQ swapped in for {ok.sum()} of {len(df)} cases ({df.loc[ok].sid.nunique()} storms); "
+          f"mean |CARQ - best track| at init {dev:.2f} kt")
+    return df.drop(columns=[x for x in df.columns if x.startswith("vmax_kt_") or x.startswith("pmin_hpa_")])
+
+def ri_weights(df):
+    return np.where(df.ri.values == 1, 2.0, 1.0) if RI_WEIGHT else np.ones(len(df))
 
 def fit_quantiles(Xtr, ytr, wtr, Xte, seed=0):
     """One GBM per quantile level, then sort across levels so quantiles do not cross."""
@@ -48,23 +86,30 @@ BANDS = [(0, 48), (54, 96), (102, 168)]
 def band_of(step):
     return np.digitize(step, [b[0] for b in BANDS[1:]])
 
+def spread(P):
+    """The model's own spread, used as the conformal scale: predicted 10 to 90 range, floored."""
+    return np.maximum(P[:, list(Q).index(0.90)] - P[:, list(Q).index(0.10)], 2.0) if SCALED else np.ones(len(P))
+
 def conformal_offsets(Xtr, ytr, wtr, gtr, step_tr, seed=0):
-    """Per-level, per-lead-band additive corrections so that, on out-of-fold training storms, the
-    fraction of observations below each predicted quantile equals its nominal level. Out-of-fold
-    residuals come from an inner storm-grouped 5-fold (the cross-conformal recipe, level by level).
-    Needed because quantile GBMs are far too narrow on unseen storms. Offsets by lead band because
-    the spread grows with lead; one global offset over-widens short leads and the upper tail."""
+    """Per-level, per-lead-band corrections so that, on out-of-fold training storms, the fraction of
+    observations below each predicted quantile equals its nominal level. Out-of-fold residuals come
+    from an inner storm-grouped 5-fold (the cross-conformal recipe, level by level). Needed because
+    quantile GBMs are far too narrow on unseen storms. Offsets by lead band because the spread grows
+    with lead. With SCALED the residuals are divided by the model's predicted 10 to 90 range first, so
+    the correction is proportional to how uncertain the model already is (wide for intense, fast
+    changing storms, narrow for weak steady ones) instead of a constant number of knots."""
     R = np.zeros((len(Xtr), len(Q)))
     for a, b in GroupKFold(5).split(Xtr, ytr, gtr):
-        R[b] = ytr[b, None] - fit_quantiles(Xtr[a], ytr[a], wtr[a], Xtr[b], seed)
+        Pb = fit_quantiles(Xtr[a], ytr[a], wtr[a], Xtr[b], seed)
+        R[b] = (ytr[b, None] - Pb) / spread(Pb)[:, None]
     bands = band_of(step_tr)
     return np.array([[np.quantile(R[bands == k, j], q) for j, q in enumerate(Q)] for k in range(len(BANDS))])
 
 def apply_offsets(P, off, step):
-    return np.sort(P + off[band_of(step)], axis=1)
+    return np.sort(P + off[band_of(step)] * spread(P)[:, None], axis=1)
 
 def predict_cv(df, feats, seed=0, conformal=True):
-    X = df[feats].values; y = df.res_v.values; w = np.where(df.ri.values == 1, 2.0, 1.0); g = df.sid.values
+    X = df[feats].values; y = df.res_v.values; w = ri_weights(df); g = df.sid.values
     P = np.zeros((len(df), len(Q)))
     st = df.step.values
     for tr, te in GroupKFold(5).split(X, y, g):
@@ -74,7 +119,7 @@ def predict_cv(df, feats, seed=0, conformal=True):
 
 def predict_holdout(df, feats, seed=0, conformal=True):
     tr = (df.year == 2025).values; te = ~tr
-    X = df[feats].values; y = df.res_v.values; w = np.where(df.ri.values == 1, 2.0, 1.0); g = df.sid.values
+    X = df[feats].values; y = df.res_v.values; w = ri_weights(df); g = df.sid.values
     P = np.full((len(df), len(Q)), np.nan)
     st = df.step.values
     Pte = fit_quantiles(X[tr], y[tr], w[tr], X[te], seed)
@@ -83,7 +128,7 @@ def predict_holdout(df, feats, seed=0, conformal=True):
 
 def point_gbm_cv(df, feats, seed=0):
     """The deterministic reference: MSE GBM on the residual, same CV, same features."""
-    X = df[feats].values; y = df.res_v.values; w = np.where(df.ri.values == 1, 2.0, 1.0)
+    X = df[feats].values; y = df.res_v.values; w = ri_weights(df)
     p = np.zeros(len(df))
     for tr, te in GroupKFold(5).split(X, y, df.sid.values):
         p[te] = HGB(random_state=seed, **PARAMS).fit(X[tr], y[tr], sample_weight=w[tr]).predict(X[te])
@@ -91,7 +136,7 @@ def point_gbm_cv(df, feats, seed=0):
 
 def point_gbm_holdout(df, feats, seed=0):
     tr = (df.year == 2025).values; te = ~tr
-    X = df[feats].values; y = df.res_v.values; w = np.where(df.ri.values == 1, 2.0, 1.0)
+    X = df[feats].values; y = df.res_v.values; w = ri_weights(df)
     p = np.full(len(df), np.nan)
     p[te] = HGB(random_state=seed, **PARAMS).fit(X[tr], y[tr], sample_weight=w[tr]).predict(X[te])
     return p + df.vmax_kt.values
@@ -114,6 +159,21 @@ def crps_from_quantiles(P, y):
     d = y[:, None] - P
     pin = np.maximum(Q * d, (Q - 1) * d)
     return 2 * pin.mean(axis=1)
+
+def twcrps(P, y, t):
+    """Threshold-weighted CRPS with weight 1{z >= t}: the CRPS of max(Y, t) against max(y, t)
+    (Gneiting and Ranjan 2011). For a point forecast (one column) it reduces to |max(f,t) - max(y,t)|."""
+    Pt, yt = np.maximum(P, t), np.maximum(y, t)
+    if P.shape[1] == 1:
+        return np.abs(Pt[:, 0] - yt)
+    return crps_from_quantiles(Pt, yt)
+
+def contingency(fc, ob):
+    """Hit rate (POD), false-alarm ratio and frequency bias for binary forecast and observed events."""
+    fc, ob = np.asarray(fc, bool), np.asarray(ob, bool)
+    hits, miss, fa = (fc & ob).sum(), (~fc & ob).sum(), (fc & ~ob).sum()
+    pod = hits / max(hits + miss, 1); far = fa / max(hits + fa, 1); bias = (hits + fa) / max(hits + miss, 1)
+    return f"POD {pod:.2f}  FAR {far:.2f}  bias {bias:.2f}  (obs {hits + miss}, fc {hits + fa}, hits {hits})"
 
 def cdf_from_quantiles(P, x):
     """P(Y <= x) by linear interpolation of the quantile function, flat tails beyond the outer levels."""
@@ -180,6 +240,14 @@ def report(df, P, point, tag, pcls=None):
         print(f"{name:10s} {mask.sum():5d} {len(np.unique(g[mask])):6d}   {ae_med[mask].mean():8.2f}   "
               f"{ae_pt[mask].mean():8.2f}   {fmt(diff.mean(), storm_boot(diff, g[mask])):>22s}   "
               f"{crps[mask].mean():6.2f}   {cover[mask].mean():6.1%}")
+    print("CRPS and tail-weighted CRPS (threshold 96 kt), all cases; point forecasts score as MAE")
+    for name, Pm in [("quantile model", P), ("point GBM", point[:, None]), ("raw AIFS", d.vmax_kt.values[:, None])]:
+        print(f"  {name:15s} CRPS {crps_from_quantiles(Pm, y).mean() if Pm.shape[1] > 1 else np.abs(y - Pm[:, 0]).mean():6.2f}"
+              f"   twCRPS>=96 {twcrps(Pm, y, 96).mean():6.2f}   twCRPS>=64 {twcrps(Pm, y, 64).mean():6.2f}")
+    print("events at 96 and 120 kt (forecast = median or point >= threshold): hit rate, false-alarm ratio, bias")
+    for thr in (96, 120):
+        for name, f in [("median", med), ("point GBM", point), ("raw AIFS", d.vmax_kt.values)]:
+            print(f"  {thr} kt {name:10s} " + contingency(f >= thr, y >= thr))
     qs = [0.9, 0.95, 0.99]
     print("tail quantiles (kt)   observed  median  q95-level  point")
     for q in qs:
@@ -196,8 +264,11 @@ def report(df, P, point, tag, pcls=None):
 
 if __name__ == "__main__":
     ships = "--noships" not in sys.argv; conf = "--raw" not in sys.argv
-    df, feats = load(ships)
-    tag = ("ships" if ships else "base") + ("" if conf else "_raw")
+    RI_WEIGHT = "--riweight" in sys.argv; SCALED = "--scaled" in sys.argv; carq = "--carq" in sys.argv
+    df, feats = load(ships, carq)
+    tag = ("ships" if ships else "base") + ("" if conf else "_raw") + ("_riw" if RI_WEIGHT else "") \
+        + ("_scaled" if SCALED else "") + ("_carq" if carq else "")
+    print(f"config: {tag}")
     os.makedirs(OUT, exist_ok=True)
     P = predict_cv(df, feats, conformal=conf); pt = point_gbm_cv(df, feats); pc = classifier_ri(df, feats)
     report(df, P, pt, f"storm-grouped CV, {tag}", pc).to_csv(f"{OUT}/quantile_cv_{tag}.csv", index=False)
