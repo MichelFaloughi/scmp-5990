@@ -16,10 +16,9 @@ Run from core/:  python fair_baseline.py      (writes data/out/fair_baseline_cv.
 import os
 import numpy as np, pandas as pd, torch, torch.nn as nn
 from sklearn.model_selection import GroupKFold
-from common import FEATURES
+from common import FEATURES, OUT, data_file
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "..", "data", "out")
 SEEDS = (0, 1, 2)
 LEVELS = torch.linspace(0.95, 0.999, 25)
 MAX_IT, CHECK = 3000, 25
@@ -68,7 +67,7 @@ def quantile_map(train_pred, train_obs, test_pred):
     return np.quantile(so, np.clip(u, 0, 1))
 
 def main():
-    df = pd.read_csv(os.path.join(HERE, "data", "reference.csv"), keep_default_na=False, na_values=[""])
+    df = pd.read_csv(data_file("reference"), keep_default_na=False, na_values=[""])
     X_all, y_all, g = df[FEATURES], df.res_v.values, df.sid.values
     cols = ["erm600", "erm_tuned", "erm_tuned_qm", "eta"]
     pred = {c: np.zeros(len(df)) for c in cols}

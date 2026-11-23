@@ -25,7 +25,8 @@ RI_KT = 30.0
 
 def add_dv24(df):
     """Observed 24 h change ending at the valid time, and the AIFS forecast's own 24 h change."""
-    bt = pd.read_csv(os.path.join(HERE, "data", "besttrack.csv"), keep_default_na=False, na_values=[""])
+    from common import data_file
+    bt = pd.read_csv(data_file("besttrack"), keep_default_na=False, na_values=[""])
     w = bt.assign(t=pd.to_datetime(bt.ISO_TIME)).set_index(["SID", "t"]).USA_WIND
     valid = pd.to_datetime(df.valid)
     df["dv24"] = df.bt_wind_kt.values - w.reindex(pd.MultiIndex.from_arrays([df.sid, valid - pd.Timedelta(hours=24)])).values
@@ -69,11 +70,11 @@ def score(tag, d, P, p_cls, p_int):
     return out
 
 def main():
-    carq = "--carq" in sys.argv; qm.SCALED = "--scaled" in sys.argv
-    df, feats = qm.load(True, carq)
+    carq = "--carq" in sys.argv; qm.SCALED = "--scaled" in sys.argv; ships = "--noships" not in sys.argv
+    df, feats = qm.load(ships, carq)
     df = add_dv24(df); feats = feats + ["aifs_dv24"]
     df = df[(df.step >= 24) & df.dv24.notna()].reset_index(drop=True)
-    tag = "ships" + ("_scaled" if qm.SCALED else "") + ("_carq" if carq else "")
+    tag = ("ships" if ships else "base") + ("_scaled" if qm.SCALED else "") + ("_carq" if carq else "")
     os.makedirs(OUT, exist_ok=True)
     for name, holdout in [("cv", False), ("holdout", True)]:
         P = fit_dv24(df, feats, holdout)

@@ -59,6 +59,15 @@ Rebuilding the modeling core of this repo by hand, to own it.
   every model, from the prediction files in ../data/out.
 - `figures.py`: report figures.
 
+## All basins (advisor item 3, 2026-11-23)
+
+`SCMP_DATA=global python <script>.py` runs any core script on the all-basin dataset (North Atlantic,
+East Pacific, West Pacific, North Indian, South Indian, South Pacific; 157 storms, 22358 cases):
+`core/data/*_global.csv` link to `../data/tc_global/`, FEATURES gains the basin flags `is_wp`,
+`is_ni`, `is_sh`, and outputs go to `../data/out/global/`. The dataset is built by
+`pipeline/catalog_global.py`, `fetch_aifs.py --boxes wp,sh`, `fetch_aifs_pl.py --boxes wp,sh`,
+`track_global.py`, `build_global.py` and `ships_features_global.py`, in that order.
+
 ## Papers
 
 - Allen et al. 2026, AIFS-TC: arXiv 2608.09959 (what is being reproduced)

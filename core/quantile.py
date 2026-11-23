@@ -23,10 +23,9 @@ import os, sys
 import numpy as np, pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor as HGB
 from sklearn.model_selection import GroupKFold
-from common import FEATURES
+from common import FEATURES, OUT, data_file
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "..", "data", "out")
 Q = np.array([0.02, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.98])
 QCOLS = [f"q{int(q * 100):02d}" for q in Q]
 RI_KT = 30.0
@@ -35,12 +34,12 @@ SCALED = False         # --scaled: conformal offsets in units of predicted sprea
 PARAMS = dict(max_iter=300, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=20, l2_regularization=1.0)
 
 def load(ships=True, carq=False):
-    df = pd.read_csv(os.path.join(HERE, "data", "reference.csv"), keep_default_na=False, na_values=[""])
+    df = pd.read_csv(data_file("reference"), keep_default_na=False, na_values=[""])
     feats = list(FEATURES)
     if carq:
         df = swap_carq(df)
     if ships:
-        sf = pd.read_csv(os.path.join(HERE, "data", "ships_features.csv"), keep_default_na=False, na_values=[""])
+        sf = pd.read_csv(data_file("ships_features"), keep_default_na=False, na_values=[""])
         df = df.merge(sf, on=["init", "sid", "step"], how="left")
         feats += [c for c in sf.columns if c not in ("init", "sid", "step")]
     df["year"] = pd.to_datetime(df.init).dt.year
@@ -54,7 +53,7 @@ def swap_carq(df):
     c = o[o.tech == "CARQ"].pivot_table(index=["atcf_id", "init"], columns="lead", values=["vmax_kt", "pmin_hpa"])
     c.columns = [f"{a}_{b}" for a, b in c.columns]; c = c.reset_index()
     c["init"] = c.init.astype(str)
-    bt = pd.read_csv(os.path.join(HERE, "data", "besttrack.csv"), keep_default_na=False, na_values=[""])
+    bt = pd.read_csv(data_file("besttrack"), keep_default_na=False, na_values=[""])
     ids = bt[["SID", "USA_ATCF_ID"]].drop_duplicates().rename(columns={"SID": "sid", "USA_ATCF_ID": "atcf_id"})
     df = df.merge(ids, on="sid", how="left").merge(c, on=["atcf_id", "init"], how="left")
     ok = df["vmax_kt_0"].notna()

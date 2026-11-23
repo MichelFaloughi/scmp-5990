@@ -37,7 +37,9 @@ def table(tag, d, models, ref="gbm"):
     return rows
 
 def main():
-    fb = load("fair_baseline_cv"); qc = load("quantile_cv_ships")
+    # with SHIPS features when quantile.py has been run with them, otherwise base features only
+    feat = "ships" if os.path.exists(f"{OUT}/quantile_cv_ships.csv") else "base"
+    fb = load("fair_baseline_cv"); qc = load(f"quantile_cv_{feat}")
     qb = load("quantile_cv_base")[["init", "sid", "step", "point"]].rename(columns={"point": "point_base"})
     d = fb.merge(qc, on=["init", "sid", "step"], suffixes=("", "_q")).merge(qb, on=["init", "sid", "step"])
     col = lambda c: d[c].values[:, None]
@@ -45,16 +47,20 @@ def main():
     # GBM rows differ only by their features; the fair-baseline file's own GBM (2x RI-weighted) is kept as a row
     models = [("raw AIFS", col("vmax_kt")), ("GBM (point, base features)", col("point_base")),
               ("GBM (2x RI, fair-baseline run)", col("gbm")), ("plain MLP", col("erm600")),
-              ("tuned MLP", col("erm_tuned")), ("tuned MLP + quantile mapping", col("erm_tuned_qm")), ("eta", col("eta")),
-              ("GBM (point, base + SHIPS)", col("point")), ("quantile GBM (base + SHIPS)", d[QCOLS].values)]
+              ("tuned MLP", col("erm_tuned")), ("tuned MLP + quantile mapping", col("erm_tuned_qm")), ("eta", col("eta"))]
+    if feat == "ships":
+        models.append(("GBM (point, base + SHIPS)", col("point")))
+    models.append((f"quantile GBM (base{' + SHIPS' if feat == 'ships' else ''})", d[QCOLS].values))
     rows = table("storm-grouped CV", d, models, ref="GBM (point, base features)")
-    if os.path.exists(f"{OUT}/quantile_holdout_ships.csv"):
-        h = load("quantile_holdout_ships")
-        ref = pd.read_csv("data/reference.csv", keep_default_na=False, na_values=[""])[["init", "sid", "step", "vmax_kt", "corr_vmax_kt", "eta_vmax_kt", "erm_vmax_kt"]]
+    if os.path.exists(f"{OUT}/quantile_holdout_{feat}.csv"):
+        h = load(f"quantile_holdout_{feat}")
+        from common import data_file
+        ref = pd.read_csv(data_file("reference"), keep_default_na=False, na_values=[""])[["init", "sid", "step", "vmax_kt"]]
         h = h.merge(ref, on=["init", "sid", "step"], suffixes=("_q", ""))
         col = lambda c: h[c].values[:, None]
-        models = [("raw AIFS", col("vmax_kt")), ("GBM (point, base + SHIPS)", col("point")), ("quantile GBM (base + SHIPS)", h[QCOLS].values)]
-        rows += table("temporal holdout 2025->2026", h, models, ref="GBM (point, base + SHIPS)")
+        lab = f"base{' + SHIPS' if feat == 'ships' else ''}"
+        models = [("raw AIFS", col("vmax_kt")), (f"GBM (point, {lab})", col("point")), (f"quantile GBM ({lab})", h[QCOLS].values)]
+        rows += table("temporal holdout 2025->2026", h, models, ref=f"GBM (point, {lab})")
     pd.DataFrame(rows).to_csv(f"{OUT}/headline_cv.csv", index=False)
 
 if __name__ == "__main__":

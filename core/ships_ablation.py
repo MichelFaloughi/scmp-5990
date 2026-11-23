@@ -8,11 +8,12 @@ Run from core/:  python ships_ablation.py
 """
 import numpy as np, pandas as pd
 from quantile import OUT, storm_boot, fmt
+from common import data_file
 
 def main():
     b = pd.read_csv(f"{OUT}/quantile_cv_base.csv", keep_default_na=False, na_values=[""])
     s = pd.read_csv(f"{OUT}/quantile_cv_ships.csv", keep_default_na=False, na_values=[""])
-    ref = pd.read_csv("data/reference.csv", keep_default_na=False, na_values=[""])[["init", "sid", "step", "ri"]]
+    ref = pd.read_csv(data_file("reference"), keep_default_na=False, na_values=[""])[["init", "sid", "step", "ri"]]
     d = b.merge(s, on=["init", "sid", "step"], suffixes=("_base", "_ships")).merge(ref, on=["init", "sid", "step"])
     y, g = d.bt_wind_kt_base.values, d.sid.values
     eb, es = np.abs(y - d.point_base.values), np.abs(y - d.point_ships.values)
