@@ -155,10 +155,25 @@ def classifier_ri(df, feats, holdout=False, seed=0):
 # ---- scoring -------------------------------------------------------------------------------
 
 def crps_from_quantiles(P, y):
-    """Mean pinball loss over the levels, times 2: a standard approximation of the CRPS."""
-    d = y[:, None] - P
-    pin = np.maximum(Q * d, (Q - 1) * d)
-    return 2 * pin.mean(axis=1)
+    """CRPS of the predictive CDF that is piecewise linear through the nine (quantile, level) knots,
+    with steps of mass Q[0] at the lowest and 1 - Q[-1] at the highest quantile. Exact integral of
+    (F(x) - 1{x >= y})^2 dx. Until 2026-11-23 this was twice the unweighted mean pinball loss over the
+    levels, which under-states the CRPS by about a third because the levels crowd the tails."""
+    P = np.sort(P, axis=1); n = len(y)
+    # knots: the quantiles plus the observation, with F interpolated at the observation
+    Fy = np.array([np.interp(y[i], P[i], Q, left=0.0, right=1.0) for i in range(n)])
+    X = np.concatenate([P, y[:, None]], axis=1)
+    F = np.concatenate([np.tile(Q, (n, 1)), Fy[:, None]], axis=1)
+    o = np.argsort(X, axis=1, kind="stable"); X = np.take_along_axis(X, o, 1); F = np.take_along_axis(F, o, 1)
+    a, b, Fa, Fb = X[:, :-1], X[:, 1:], F[:, :-1], F[:, 1:]
+    h = (a >= y[:, None]).astype(float)               # indicator 1{x >= y} on each segment
+    dF = Fb - Fa
+    lin = np.where(np.abs(dF) > 1e-12, ((Fb - h) ** 3 - (Fa - h) ** 3) / (3 * np.where(dF == 0, 1, dF)), (Fa - h) ** 2)
+    keep = (a >= P[:, :1]) & (b <= P[:, -1:])           # segments between the lowest and highest quantile only
+    inner = (keep * (b - a) * lin).sum(axis=1)
+    below = np.maximum(P[:, 0] - y, 0)                # F = 0 left of the lowest quantile
+    above = np.maximum(y - P[:, -1], 0)               # F = 1 right of the highest quantile
+    return inner + below + above
 
 def twcrps(P, y, t):
     """Threshold-weighted CRPS with weight 1{z >= t}: the CRPS of max(Y, t) against max(y, t)
@@ -262,6 +277,16 @@ def report(df, P, point, tag, pcls=None):
                          **{f"q{int(q * 100):02d}": P[:, j] for j, q in enumerate(Q)}, "p_ri": p, "p_ri_24": p24,
                          "p_ri_cls": pcls[m] if pcls is not None else np.nan})
 
+def rescore(df, tag):
+    """Re-run report() on saved predictions (no refit), e.g. after a change to the scoring code."""
+    for split, name in [("cv", "storm-grouped CV"), ("holdout", "temporal holdout 2025->2026")]:
+        s = pd.read_csv(f"{OUT}/quantile_{split}_{tag}.csv", keep_default_na=False, na_values=[""])
+        keys = ["init", "sid", "step"]
+        extra = df.drop(columns=[c for c in df.columns if c in s.columns and c not in keys])
+        d = s.merge(extra, on=keys, how="left")
+        assert d.ri.notna().all(), "saved predictions do not match the current dataset"
+        report(d, d[QCOLS].values, d.point.values, f"{name}, {tag} (rescored)", d.p_ri_cls.values)
+
 if __name__ == "__main__":
     ships = "--noships" not in sys.argv; conf = "--raw" not in sys.argv
     RI_WEIGHT = "--riweight" in sys.argv; SCALED = "--scaled" in sys.argv; carq = "--carq" in sys.argv
@@ -270,6 +295,8 @@ if __name__ == "__main__":
         + ("_scaled" if SCALED else "") + ("_carq" if carq else "")
     print(f"config: {tag}")
     os.makedirs(OUT, exist_ok=True)
+    if "--rescore" in sys.argv:
+        rescore(df, tag); sys.exit()
     P = predict_cv(df, feats, conformal=conf); pt = point_gbm_cv(df, feats); pc = classifier_ri(df, feats)
     report(df, P, pt, f"storm-grouped CV, {tag}", pc).to_csv(f"{OUT}/quantile_cv_{tag}.csv", index=False)
     P = predict_holdout(df, feats, conformal=conf); pt = point_gbm_holdout(df, feats); pc = classifier_ri(df, feats, holdout=True)

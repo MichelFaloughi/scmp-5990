@@ -46,7 +46,9 @@ Rebuilding the modeling core of this repo by hand, to own it.
 - `fair_baseline.py`: eta against a tuned MLP and tuned MLP plus quantile mapping.
 - `quantile.py`: quantile GBM with cross-conformal recalibration, CV and 2026 holdout.
   Defaults since 2026-11-18: no RI weights, constant offsets per lead band. Flags `--riweight`,
-  `--scaled`, `--carq`, `--noships`, `--raw`.
+  `--scaled`, `--carq`, `--noships`, `--raw`; `--rescore` re-reports from the saved predictions
+  without refitting. CRPS is the exact CRPS of the piecewise-linear distribution through the nine
+  quantiles (since 2026-11-23; the earlier twice-mean-pinball shortcut understated it by a third).
 - `riprob.py`: P(RI) from a direct quantile model of the observed 24 h change (the version
   of record). Compares with the intensity-quantile route and a classifier.
 - `ens_ri.py`: P(RI) as the fraction of AIFS-ENS members that intensify, raw and corrected.
