@@ -8,7 +8,7 @@ Rebuilding the modeling core of this repo by hand, to own it.
    (TARGETS.md), then compare code.
 2. Exercises 1 to 4 (`gbm.py`, `eta.ipynb`, `paired_ci.ipynb`) were written by hand with an
    AI assistant acting only as a TA. From 2026-10-27 the later files (`quantile.py`,
-   `fair_baseline.py`, `ens_ablation.py`, `riprob.py`, `ens_ri.py`, `headline.py`) were
+   `fair_baseline.py`, `ens_ablation.py`, `riprob.py`, `ens_ri.py`, `headline.py`, `ships_ablation.py`) were
    written with the assistant's help, under time pressure.
 3. Matching a target within ~0.2 kt = that step is owned. Move on.
 
@@ -53,6 +53,8 @@ Rebuilding the modeling core of this repo by hand, to own it.
   of record). Compares with the intensity-quantile route and a classifier.
 - `ens_ri.py`: P(RI) as the fraction of AIFS-ENS members that intensify, raw and corrected.
 - `ens_ablation.py`: ENS spread as a feature (no gain).
+- `ships_ablation.py`: Table 7, the SHIPS predictors on the point GBM, from the saved base and
+  base plus SHIPS predictions.
 - `headline.py`: CRPS, tail-weighted CRPS, hit rate and false alarms at 96 and 120 kt for
   every model, from the prediction files in ../data/out.
 - `figures.py`: report figures.

@@ -38,9 +38,13 @@ def table(tag, d, models, ref="gbm"):
 
 def main():
     fb = load("fair_baseline_cv"); qc = load("quantile_cv_ships")
-    d = fb.merge(qc, on=["init", "sid", "step"], suffixes=("", "_q"))
+    qb = load("quantile_cv_base")[["init", "sid", "step", "point"]].rename(columns={"point": "point_base"})
+    d = fb.merge(qc, on=["init", "sid", "step"], suffixes=("", "_q")).merge(qb, on=["init", "sid", "step"])
     col = lambda c: d[c].values[:, None]
-    models = [("raw AIFS", col("vmax_kt")), ("GBM (point, base features)", col("gbm")), ("plain MLP", col("erm600")),
+    # the reference GBM is the one of quantile.py on base features (unweighted, single seed), so that the
+    # GBM rows differ only by their features; the fair-baseline file's own GBM (2x RI-weighted) is kept as a row
+    models = [("raw AIFS", col("vmax_kt")), ("GBM (point, base features)", col("point_base")),
+              ("GBM (2x RI, fair-baseline run)", col("gbm")), ("plain MLP", col("erm600")),
               ("tuned MLP", col("erm_tuned")), ("tuned MLP + quantile mapping", col("erm_tuned_qm")), ("eta", col("eta")),
               ("GBM (point, base + SHIPS)", col("point")), ("quantile GBM (base + SHIPS)", d[QCOLS].values)]
     rows = table("storm-grouped CV", d, models, ref="GBM (point, base features)")

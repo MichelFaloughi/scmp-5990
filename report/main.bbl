@@ -64,7 +64,8 @@ Tilmann Gneiting and Roopesh Ranjan.
 
 \bibitem[{Google DeepMind}(2025)]{deepmind2025weatherlab}
 {Google DeepMind}.
-\newblock Weather {Lab}: experimental {AI} tropical cyclone predictions.
+\newblock How we're supporting better tropical cyclone prediction with {AI}
+  ({Weather} {Lab}).
 \newblock
   \url{https://deepmind.google/blog/how-were-supporting-better-tropical-cyclone-prediction-with-ai/},
   2025.

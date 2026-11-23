@@ -5,6 +5,7 @@
 \usepackage{amsmath}
 \usepackage{siunitx}
 \usepackage[round]{natbib}
+\PassOptionsToPackage{hyphens}{url}
 \usepackage[hidelinks]{hyperref}
 \usepackage{caption}
 \usepackage{placeins}
@@ -43,11 +44,12 @@ $+0.3$\,kt $[-0.6, +1.3]$ from the GBM, although it has the best hit rate at 96\
 0.28, at the same false-alarm ratio). A diagnosis of \emph{which} storms receive the extreme
 forecasts shows the penalty controls how many extreme forecasts are issued, not where they go.
 The constructive response is a probabilistic correction: quantile gradient boosting with a
-cross-conformal recalibration step cuts the CRPS of the point GBM by a third (9.4 against
-13.6\,kt in cross-validation, 10.7 against 14.0 on a future season), improves the tail-weighted
-CRPS by 0.6\,kt $[-1.1, -0.0]$, and gives 80\% intervals that cover 82\% of out-of-storm cases
-and 82\% of the future season. SHIPS-type environmental predictors computed from the AIFS pressure-level
-fields help by about 1\,kt at short leads. A quantile model of the 24\,h intensity change itself
+cross-conformal recalibration step cuts the CRPS of the point GBM on the same features by a
+third (9.4 against 13.6\,kt in cross-validation, 10.7 against 14.0 on a future season), improves the tail-weighted
+CRPS by 0.8\,kt $[-1.4, -0.2]$, and gives 80\% intervals that cover 82\% of out-of-storm cases
+and 82\% of the future season. SHIPS-type environmental predictors computed from the AIFS
+pressure-level fields add little: 0.2\,kt overall and 0.8\,kt at short leads, with intervals
+that include zero. A quantile model of the 24\,h intensity change itself
 gives the first probability of RI with skill over climatology in cross-validation (Brier skill
 $+0.09$, AUC 0.80), where reading the probability off the intensity distribution or a direct
 classifier has none; on the future season all three fall below climatology. The whole record
@@ -202,8 +204,8 @@ All cases          & 2223 & 46 & 30.3 [24.5, 35.1] & 14.4 [12.4, 16.6] &  9.4 [8
 RI cases only      &  162 & 13 & 71.4 [61.7, 77.5] & 38.3 [32.0, 42.8] & 20.2 [16.5, 23.5] \\
 North Atlantic     &  772 & 15 & 32.4 [22.0, 39.3] & 15.5 [10.7, 19.7] & 10.4 [7.7, 12.4] \\
 East Pacific       & 1451 & 31 & 29.2 [22.2, 35.7] & 13.9 [11.4, 16.2] &  8.9 [7.4, 10.2] \\
-2025 (AIFS 1.0)    & 1526 & 30 & 29.6 [23.2, 35.5] & 15.5 [12.9, 18.1] &  9.6 [8.2, 10.9] \\
-2026 (AIFS 2.0)    &  697 & 16 & 31.8 [20.1, 39.2] & 12.1 [8.4, 14.5]  &  8.8 [5.8, 10.9] \\
+2025 (AIFS v1, v1.1) & 1526 & 30 & 29.6 [23.2, 35.5] & 15.5 [12.9, 18.1] &  9.6 [8.2, 10.9] \\
+2026 (AIFS v2 from May) &  697 & 16 & 31.8 [20.1, 39.2] & 12.1 [8.4, 14.5]  &  8.8 [5.8, 10.9] \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -261,14 +263,17 @@ gives these for every model in the report; the sections that follow explain each
 this way the point models are closer than their RI columns suggest: by the
 tail-weighted CRPS no point model separates from the GBM, eta included, while eta detects far more
 of the 96\,kt cases at the same false-alarm ratio. The quantile model is the only one that improves
-both scores.
+both scores (against the point GBM on its own features: $-4.2$ and $-0.8$\,kt, both intervals
+excluding zero).
 
 \begin{table}[t]
 \centering
 \caption{Headline scores for every model in the report: storm-grouped CV (52 storms, 9149 cases)
 and the 2026 holdout (20 storms, 4121 cases). CRPS and threshold-weighted CRPS above 96\,kt in
 kt, each with the paired storm-bootstrap difference from the point GBM of the same block; for a
-point forecast the CRPS is the MAE. POD/FAR: hit rate and false-alarm ratio of forecasting at
+point forecast the CRPS is the MAE. The reference GBM is the point GBM of Section~\ref{sec:prob}'s
+code on base features (unweighted, one seed), the same fit as in Tables~\ref{tab:ships} and
+\ref{tab:prob}; the fair-baseline run's GBM ($2\times$ RI weighting) is kept as its own row. POD/FAR: hit rate and false-alarm ratio of forecasting at
 least 96 or 120\,kt (the median for the quantile model). FAR is undefined when no forecast
 reaches the threshold.}
 \label{tab:headline}
@@ -278,14 +283,15 @@ reaches the threshold.}
 Model & CRPS & vs GBM & twCRPS$_{96}$ & vs GBM & POD/FAR 96 & POD/FAR 120 \\
 \midrule
 \multicolumn{7}{l}{\emph{Cross-validation; reference: GBM, base features}} \\
-Raw AIFS                   & 28.35 & $+14.2$ $[+10.1, +18.0]$ & 3.47 & $+0.31$ $[-0.04, +0.92]$ & 0.00/-- & 0.00/-- \\
-GBM, base features         & 14.12 &                          & 3.16 &                          & 0.28/0.29 & 0.04/0.59 \\
-Plain MLP                  & 17.66 & $+3.5$ $[+0.8, +6.5]$    & 4.10 & $+0.94$ $[-0.10, +2.14]$ & 0.44/0.36 & 0.32/0.58 \\
-Tuned MLP                  & 14.42 & $+0.3$ $[-1.0, +1.4]$    & 3.48 & $+0.32$ $[-0.40, +1.29]$ & 0.41/0.36 & 0.13/0.68 \\
-Tuned MLP + QM             & 15.44 & $+1.3$ $[-0.3, +3.0]$    & 4.33 & $+1.17$ $[-0.13, +2.80]$ & 0.50/0.40 & 0.26/0.70 \\
-Eta                        & 13.29 & $-0.8$ $[-2.2, +0.5]$    & 3.48 & $+0.32$ $[-0.55, +1.25]$ & 0.54/0.29 & 0.28/0.59 \\
-GBM, base + SHIPS          & 13.64 & $-0.5$ $[-2.0, +0.7]$    & 3.39 & $+0.23$ $[-0.21, +0.77]$ & 0.31/0.32 & 0.01/0.87 \\
-Quantile GBM, base + SHIPS &  9.41 & $-4.7$ $[-5.8, -3.8]$    & 2.61 & $-0.55$ $[-1.11, -0.02]$ & 0.31/0.29 & 0.05/0.60 \\
+Raw AIFS                   & 28.35 & $+14.5$ $[+10.5, +18.3]$ & 3.47 & $+0.35$ $[-0.04, +1.02]$ & 0.00/-- & 0.00/-- \\
+GBM, base features         & 13.81 &                          & 3.12 &                          & 0.29/0.22 & 0.06/0.54 \\
+GBM, base, $2\times$ RI (fair-baseline run) & 14.12 & $+0.3$ $[+0.0, +0.6]$ & 3.16 & $+0.05$ $[-0.01, +0.11]$ & 0.28/0.29 & 0.04/0.59 \\
+Plain MLP                  & 17.66 & $+3.9$ $[+1.2, +6.8]$    & 4.10 & $+0.99$ $[-0.08, +2.23]$ & 0.44/0.36 & 0.32/0.58 \\
+Tuned MLP                  & 14.42 & $+0.6$ $[-0.6, +1.7]$    & 3.48 & $+0.36$ $[-0.37, +1.35]$ & 0.41/0.36 & 0.13/0.68 \\
+Tuned MLP + QM             & 15.44 & $+1.6$ $[+0.1, +3.3]$    & 4.33 & $+1.21$ $[-0.11, +2.88]$ & 0.50/0.40 & 0.26/0.70 \\
+Eta                        & 13.29 & $-0.5$ $[-1.9, +0.8]$    & 3.48 & $+0.37$ $[-0.54, +1.34]$ & 0.54/0.29 & 0.28/0.59 \\
+GBM, base + SHIPS          & 13.64 & $-0.2$ $[-1.6, +1.0]$    & 3.39 & $+0.28$ $[-0.20, +0.85]$ & 0.31/0.32 & 0.01/0.87 \\
+Quantile GBM, base + SHIPS &  9.41 & $-4.4$ $[-5.4, -3.4]$    & 2.61 & $-0.51$ $[-1.06, +0.01]$ & 0.31/0.29 & 0.05/0.60 \\
 \midrule
 \multicolumn{7}{l}{\emph{2026 holdout; reference: GBM, base + SHIPS}} \\
 Raw AIFS                   & 27.79 & $+13.8$ $[+5.4, +19.8]$  & 3.72 & $+0.41$ $[-0.01, +1.02]$ & 0.00/-- & 0.00/-- \\
@@ -337,15 +343,12 @@ The clean contrast is eta against ERM on the same network: $-4.6$\,kt $[-6.8, -2
 the GBM the overall difference is a tie ($-0.7$\,kt $[-2.0, +0.8]$), but on RI cases eta wins by
 $-10.5$\,kt $[-14.4, -5.6]$. Eta is also the only model whose forecasts reach the observed tail:
 its 0.95 and 0.99 forecast quantiles are 119 and 143\,kt against 120 and 140 observed, whereas the
-GBM's are 98 and 118. (The numbers in this section are from the first run of the eta notebook,
-with the $2\times$ RI-weighted GBM of Table~\ref{tab:eta} as the reference. Tables~\ref{tab:headline},
-\ref{tab:fair} and \ref{tab:fairdiff} come from the later fair-baseline run, which retrained every
-model in one go with shared folds and seeds and uses the unweighted GBM; the two runs differ by
-up to 0.3\,kt overall and 1\,kt on RI, which is the seed and library sensitivity of the networks,
-and the GBM of Tables~\ref{tab:ships} and \ref{tab:prob} is again a separate paired fit. Within
-each table the comparison is paired; across tables the absolute levels move by a few tenths.)
-On proper scores (Table~\ref{tab:headline}) the RI margin disappears: eta
-and the GBM differ by $+0.32$\,kt $[-0.55, +1.25]$ of tail-weighted CRPS, a tie. What eta buys is
+GBM's are 98 and 118. Table~\ref{tab:eta} and the differences in this paragraph are from the
+first run of the eta notebook, against the unweighted GBM; Tables~\ref{tab:fair} and
+\ref{tab:fairdiff} are from the later fair-baseline run, which retrained every model with shared
+folds and seeds against the $2\times$ RI-weighted GBM. The two runs agree to 0.3\,kt overall and
+1\,kt on RI. On proper scores (Table~\ref{tab:headline}) the RI margin disappears: eta
+and the GBM differ by $+0.37$\,kt $[-0.54, +1.34]$ of tail-weighted CRPS, a tie. What eta buys is
 detection: it forecasts 96\,kt or more for 54\% of the cases that reached it, against 28\% for the
 GBM, at the same false-alarm ratio (0.29).
 
@@ -383,7 +386,8 @@ and seeds.
 \centering
 \caption{The fair baseline. MAE (kt), storm-grouped 5-fold CV, 3 seeds, 52 storms; tail
 quantiles of the forecasts against 120 / 140 observed. Early stopping selects 100 to 250
-iterations, confirming that the 600-iteration network overfits.}
+iterations, confirming that the 600-iteration network overfits. The GBM row is the $2\times$
+RI-weighted GBM of Section~\ref{sec:results}.}
 \label{tab:fair}
 \begin{tabular}{lccc}
 \toprule
@@ -474,8 +478,12 @@ sea-surface proxy; the \citet{demaria1994mpi} maximum potential intensity from i
 potential minus the current forecast wind. Each is taken at the forecast lead, at
 initialization, and averaged along the forecast track, for 36 features in all.
 
-Table~\ref{tab:ships} gives the effect on the point GBM. The gain is about 1\,kt, concentrated at
-short leads, with intervals that touch zero, and nothing on RI. The advisor's hypothesis was that
+Table~\ref{tab:ships} gives the effect on the point GBM of Section~\ref{sec:prob}'s code, the
+same fits as the GBM rows of Tables~\ref{tab:headline} and \ref{tab:prob}. The gain is small:
+$-0.2$\,kt overall and $-0.8$ at short leads, both intervals including zero, nothing on RI, and a
+loss at long leads. An earlier version of this table from a separate GBM fit showed $-0.9$\,kt
+overall and $-1.1$ at short leads, so the short-lead gain is probably real but its size depends
+on the fit. The advisor's hypothesis was that
 the information bottleneck, not the objective, limits RI skill; these predictors do not lift it,
 which leaves the AIFS environment at $0.25^{\circ}$, the single deterministic run, or the sample
 of 15 RI storms as the remaining suspects.
@@ -483,18 +491,18 @@ of 15 RI storms as the remaining suspects.
 \begin{table}[t]
 \centering
 \caption{Point GBM with and without the 36 environmental predictors. MAE (kt), storm-grouped
-5-fold CV, paired storm-bootstrap intervals. Both models are fitted in one run on identical
-folds; the absolute levels differ from the GBMs of Tables~\ref{tab:headline} and \ref{tab:prob}
-by a few tenths of a kt (different seeds and weighting), the paired difference is the result.}
+5-fold CV, paired storm-bootstrap intervals. Both models are the point GBM of
+Section~\ref{sec:prob}'s code (unweighted, one seed) on identical folds, the same fits as the GBM
+rows of Tables~\ref{tab:headline} and \ref{tab:prob}.}
 \label{tab:ships}
 \begin{tabular}{lrrccc}
 \toprule
 Subset & $n$ & Storms & Base & + SHIPS & Difference \\
 \midrule
-All cases         & 9149 & 52 & 13.99 & 13.08 & $-0.91$ $[-2.13, +0.17]$ \\
-RI cases          &  585 & 15 & 40.62 & 39.60 & $-1.02$ $[-6.39, +3.67]$ \\
-Lead $\le 48$\,h  & 4259 & 52 & 11.56 & 10.50 & $-1.06$ $[-2.29, 0.00]$ \\
-Lead $> 96$\,h    & 2238 & 29 & 16.70 & 16.81 & $+0.11$ $[-1.93, +1.84]$ \\
+All cases         & 9149 & 52 & 13.81 & 13.64 & $-0.17$ $[-1.59, +0.99]$ \\
+RI cases          &  585 & 15 & 40.38 & 42.69 & $+2.31$ $[-2.80, +6.50]$ \\
+Lead $\le 48$\,h  & 4259 & 52 & 11.36 & 10.60 & $-0.76$ $[-1.85, +0.27]$ \\
+Lead $> 96$\,h    & 2238 & 29 & 16.61 & 18.02 & $+1.42$ $[-1.15, +3.55]$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -562,9 +570,9 @@ cases and on cases observed at 96\,kt or more the differences ($-1.2$ and $-1.8$
 intervals that include zero. On the 2026 holdout the median is $0.3$\,kt better overall
 $[-1.45, +0.82]$, no worse at short leads, and $5.6$\,kt $[-7.6, -3.3]$ better on the cases
 observed at 96\,kt or more, where the point GBM's trees are capped by their training targets. On
-the proper scores of Table~\ref{tab:headline} the distribution beats the point GBM by 4.7\,kt
-$[-5.8, -3.8]$ of CRPS in CV and 3.3 $[-4.8, -1.9]$ on the holdout, and by $0.6$\,kt
-$[-1.1, -0.0]$ of tail-weighted CRPS in CV ($-0.9$ $[-2.3, +0.5]$ on the holdout); its median
+the proper scores the distribution beats the point GBM on the same features by 4.2\,kt
+$[-5.1, -3.2]$ of CRPS in CV and 3.3 $[-4.8, -1.9]$ on the holdout, and by $0.8$\,kt
+$[-1.4, -0.2]$ of tail-weighted CRPS in CV ($-0.9$ $[-2.3, +0.5]$ on the holdout); its median
 also forecasts 96\,kt for 58\% of the holdout
 cases that reached it, against 39\% for the point GBM, at the same false-alarm ratio. The
 probabilistic model costs nothing in point accuracy and adds calibrated intervals.
@@ -695,13 +703,14 @@ intensify, the other use of the ensemble, is reported in Section~\ref{sec:prob}.
 
 Table~\ref{tab:paper} sets these results against the paper's NA+EP evaluation
 \citep{allen2026aifstc}. The samples differ (their held-out 2025 under one model version and
-hindcast initial conditions; here 2025--2026 operational output under two versions), so each
+hindcast initial conditions; here 2025--2026 operational output under three versions), so each
 column should be read against its own OFCL, not across columns.
 
 \begin{table}[t]
 \centering
-\caption{Pooled maximum-wind MAE (kt), this work versus AIFS-TC (their NA+EP test set, 29
-storms). Samples differ; compare each system to its own sample's OFCL.}
+\caption{Pooled maximum-wind MAE (kt), this work versus AIFS-TC (their NA+EP test set of
+2025: 10 NA and 19 EP storms per the labels of their Figure~1). Samples differ; compare each
+system to its own sample's OFCL.}
 \label{tab:paper}
 \begin{tabular}{lcc}
 \toprule
@@ -724,13 +733,13 @@ same quantity the paper measures. Second, the \emph{correction} reproduces the q
 recovering roughly three quarters of the raw-to-OFCL gap, but not the paper's parity with OFCL.
 Third, the shortfall concentrates exactly where limited training data should hurt most: rare RI
 events, of which this dataset contains 13 storms' worth against the paper's nine years. The
-2026-only result (12.1\,kt, single model version) already approaches the paper's 11.0.
+2026-only result (12.1\,kt, mostly one model version) already approaches the paper's 11.0.
 
 \section{Limitations}
 
 One and a half seasons versus nine years of training data, and 52 storms of which 15 produced RI
 and 9 reached 120\,kt: every RI or tail statistic in this report rests on a handful of storms, and
-the intervals say so. Two model versions in one dataset, handled only by a feature flag. The GBM
+the intervals say so. Three model versions in one dataset, handled only by a flag for the last. The GBM
 branch of AIFS-TC only (no CNN over three-dimensional patches), and the ensemble spread tested
 only on the RI-storm subset from July 2025, at leads to 120\,h.
 Best-track initial intensity as a feature in the main numbers, with the CARQ variant reported
