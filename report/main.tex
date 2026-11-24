@@ -64,7 +64,8 @@ the tuned network shrinks to 0.3\,kt with an interval including zero while its R
 survives, the SHIPS predictors now take 1.1\,kt $[0.4, 2.0]$ off the point GBM, and the
 probability of RI from the change model keeps its skill on the future season (Brier skill
 $+0.12$, AUC 0.86). A model trained on the Atlantic and East Pacific alone transfers its point
-accuracy in part to the other basins but not its calibration.
+accuracy in part to the other basins but not its calibration; with each basin held out in turn
+the CRPS rises from 8.5 to 9.3\,kt and the RI probability keeps its skill ($+0.10$).
 \end{abstract}
 
 \section{Introduction}
@@ -839,7 +840,41 @@ predictors. The two alternatives keep their rank: reading the probability off th
 quantiles reaches $+0.07$ on both splits, and the direct classifier $+0.07$ in CV and $0.00$ on
 the holdout.
 
-\paragraph{Does a correction trained on two basins transfer?} A last run trains the SHIPS models
+\paragraph{Leave-one-basin-out.} Pooled cross-validation lets every test storm's basin into
+training. Table~\ref{tab:lobo} holds each basin out in turn, as the advisor asked: the SHIPS
+models are trained on the other basins (basin flags dropped) and scored on the held-out one.
+Pooled over the five runs the point GBM loses 1.3\,kt (12.9 against 11.6), the quantile CRPS
+0.8 (9.32 against 8.52), and coverage falls from 82 to 79\%. The cost is uneven: the East
+Pacific is unaffected (CRPS 8.99 against 9.15), the North Atlantic loses 0.7, the West Pacific
+1.4 and the Southern Hemisphere 1.3, and the two basins with JTWC labels are the ones whose
+coverage drops (75 and 76\%). The probability of RI from the change model keeps its skill
+without the target basin: Brier skill $+0.097$ pooled (AUC 0.82), and positive in each of the
+four basins that have RI cases.
+
+\begin{table}[t]
+\centering
+\caption{Leave-one-basin-out against pooled storm-grouped CV, base plus SHIPS features. MAE of
+the point GBM, CRPS and 10--90\% coverage of the quantile model, and Brier skill and AUC of the
+RI probability from the 24\,h change model (leads of 24\,h or more). The North Indian basin has
+no RI case.}
+\label{tab:lobo}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+ & & \multicolumn{3}{c}{Pooled CV} & \multicolumn{5}{c}{Basin held out} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-10}
+Basin & Storms & GBM & CRPS & Cov. & GBM & CRPS & Cov. & BSS & AUC \\
+\midrule
+NA  &  17 & 11.3 & 8.63 & 85\% & 12.4 &  9.29 & 86\% & $+0.136$ & 0.88 \\
+EP  &  35 & 12.8 & 9.15 & 80\% & 12.9 &  8.99 & 81\% & $+0.040$ & 0.80 \\
+WP  &  56 & 10.3 & 7.61 & 83\% & 12.0 &  9.04 & 75\% & $+0.086$ & 0.83 \\
+NI  &   5 &  6.8 & 6.11 & 87\% &  7.7 &  5.41 & 84\% & --       & --   \\
+SH  &  44 & 12.4 & 9.12 & 82\% & 14.7 & 10.38 & 76\% & $+0.130$ & 0.83 \\
+all & 157 & 11.6 & 8.52 & 82\% & 12.9 &  9.32 & 79\% & $+0.097$ & 0.82 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Does a correction trained on two basins transfer?} The harder version trains the SHIPS models
 on every North Atlantic and East Pacific initialisation (both years, 52 storms, basin flags
 dropped) and scores the other 105 storms (13220 cases). The point GBM transfers in part: 14.4\,kt
 against 24.2 raw, where the same model trained with those basins in its cross-validation reaches
