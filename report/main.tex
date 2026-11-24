@@ -53,7 +53,14 @@ that include zero. A quantile model of the 24\,h intensity change itself
 gives the first probability of RI with skill over climatology in cross-validation (Brier skill
 $+0.09$, AUC 0.80), where reading the probability off the intensity distribution or a direct
 classifier has none; on the future season all three fall below climatology. The whole record
-holds 15 RI storms.
+holds 15 RI storms. Rerunning the pipeline on every basin (157 storms, 22369 cases, 44 RI
+storms) leaves the ordering unchanged and narrows the intervals: the quantile model cuts the
+CRPS of the point GBM by 27\% in CV and 30\% on the future season, eta's overall margin over
+the tuned network shrinks to 0.3\,kt with an interval including zero while its RI margin
+survives, the SHIPS predictors now take 1.1\,kt $[0.4, 2.0]$ off the point GBM, and the
+probability of RI from the change model keeps its skill on the future season (Brier skill
+$+0.12$, AUC 0.86). A model trained on the Atlantic and East Pacific alone transfers its point
+accuracy in part to the other basins but not its calibration.
 \end{abstract}
 
 \section{Introduction}
@@ -663,6 +670,123 @@ would follow the diagonal.}
 
 
 \FloatBarrier
+\section{All basins}\label{sec:global}
+
+Everything above used the North Atlantic and East Pacific. The advisor's third suggestion was to
+widen the record, so the pipeline was rerun on the West Pacific, North Indian, South Indian and
+South Pacific basins: the same IBTrACS catalogue (every storm reaching 34\,kt from 25 February 2025
+to September 2026, a storm keeping the basin of its first fix), the same surface and
+pressure-level fields fetched from the same archive and cropped to two further boxes
+(0--60$^{\circ}$N, 40--180$^{\circ}$E and 50$^{\circ}$S--0$^{\circ}$, 30$^{\circ}$E--120$^{\circ}$W,
+contiguous across the dateline), the same tracker, features and SHIPS predictors, with the
+850\,hPa vorticity multiplied by the sign of the latitude so that cyclonic is positive in both
+hemispheres, and three basin flags added to the features. The six 12-hourly initialisations
+before 28 February 2025 are absent from the archive. Nothing else changed: same models, same
+hyperparameters, same storm-grouped cross-validation and the same 2025 to 2026 holdout. The
+record grows from 52 storms and 9149 cases to 157 storms, 824 initialisations and 22369 cases,
+of which 1315 are RI cases from 44 storms, and 36 storms reach 96\,kt (Table~\ref{tab:basins}).
+Two caveats on the labels: outside the North Atlantic and East Pacific the best track is the
+JTWC analysis, which rests on satellite estimates with no aircraft reconnaissance, and the 2026
+North Atlantic rows in the holdout are the first five storms of a season that had not ended when
+the data were pulled.
+
+\begin{table}[t]
+\centering
+\caption{The all-basin record and the per-basin scores of the models with base plus SHIPS
+features (storm-grouped CV; the last row is the 2025 to 2026 holdout). MAE (kt) of the raw
+forecast, the point GBM and the quantile median; CRPS of the quantile model; coverage of its
+10--90\% interval. SH is the South Indian and South Pacific together (28 and 16 storms).}
+\label{tab:basins}
+\begin{tabular}{llrrrrrrrc}
+\toprule
+ & Basin & Cases & Storms & RI & Raw & GBM & Median & CRPS & Coverage \\
+\midrule
+CV & NA  &  2690 &  17 & 212 & 30.1 & 11.3 & 11.6 & 8.63 & 85\% \\
+CV & EP  &  6459 &  35 & 373 & 27.6 & 12.8 & 12.1 & 9.15 & 80\% \\
+CV & WP  &  7579 &  56 & 353 & 23.7 & 10.3 & 10.3 & 7.61 & 83\% \\
+CV & NI  &   310 &   5 &   0 & 10.0 &  6.8 &  8.1 & 6.11 & 87\% \\
+CV & SH  &  5331 &  44 & 377 & 25.8 & 12.4 & 12.6 & 9.12 & 82\% \\
+CV & all & 22369 & 157 & 1315 & 25.9 & 11.6 & 11.5 & 8.52 & 82\% \\
+\midrule
+Holdout & all & 10382 & 65 & 654 & 27.0 & 13.3 & 12.6 & 9.30 & 79\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Headline comparison.} Table~\ref{tab:global} repeats Table~\ref{tab:headline} on the
+full record. The ordering is unchanged and the intervals are narrower. The quantile model is
+again the only model that separates from the point GBM on both proper scores: $-4.20$\,kt of
+CRPS $[-5.06, -3.47]$ and $-0.67$ of tail-weighted CRPS $[-1.06, -0.34]$ against the base GBM
+in CV, $-4.03$ $[-4.65, -3.38]$ and $-0.97$ $[-1.59, -0.38]$ against the SHIPS GBM on the
+holdout; against the SHIPS GBM in CV its CRPS is 8.52 against 11.60, a 27\% reduction (30\%
+on the holdout). Its 80\% intervals cover 82\% of out-of-storm cases and 79\% of the future
+season, and its median is $0.78$\,kt $[0.33, 1.28]$ better than the point GBM on the holdout.
+Eta keeps its character and loses its overall margin: against the tuned MSE network it is
+$-0.26$\,kt $[-0.62, +0.07]$ overall (1.1\,kt on two basins) and $-2.98$ $[-4.29, -1.64]$ on
+RI cases; against quantile mapping $-0.54$ $[-1.13, +0.01]$; against the base GBM $+0.29$
+$[-0.73, +1.25]$ of CRPS and $+0.32$ $[-0.19, +0.86]$ of tail-weighted CRPS, with the highest
+hit rate of the point models at 96\,kt (0.53 against 0.40) at a higher false-alarm ratio
+(0.37 against 0.27). The conclusion of Section~\ref{sec:eta} stands with three times the
+storms: the penalty controls how many extreme forecasts are issued, and a proper score does not
+reward that.
+
+\begin{table}[t]
+\centering
+\caption{Headline comparison on all basins, as Table~\ref{tab:headline}. CRPS and tail-weighted
+CRPS above 96\,kt (kt), paired storm-bootstrap differences from the base-feature point GBM in CV
+and from the SHIPS point GBM on the holdout.}
+\label{tab:global}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrlrlcc}
+\toprule
+Model & CRPS & vs.\ GBM & twCRPS$_{96}$ & vs.\ GBM & POD/FAR 96 & POD/FAR 120 \\
+\midrule
+\multicolumn{7}{l}{\emph{Storm-grouped CV, 22369 cases, 157 storms}} \\
+Raw AIFS                     & 25.92 & $+13.20$ $[+10.81, +15.65]$ & 3.15 & $+0.47$ $[-0.03, +1.13]$ & 0.00/0.00 & 0.00/0.00 \\
+GBM, base features           & 12.72 &                             & 2.67 &                          & 0.40/0.27 & 0.17/0.30 \\
+Plain MLP                    & 13.89 & $+1.17$ $[-0.13, +2.45]$    & 2.68 & $+0.01$ $[-0.39, +0.39]$ & 0.46/0.31 & 0.29/0.40 \\
+Tuned MLP                    & 13.27 & $+0.55$ $[-0.42, +1.47]$    & 2.86 & $+0.19$ $[-0.31, +0.76]$ & 0.45/0.33 & 0.18/0.49 \\
+Tuned MLP + quantile mapping & 13.55 & $+0.83$ $[-0.26, +1.87]$    & 3.30 & $+0.62$ $[+0.03, +1.31]$ & 0.57/0.41 & 0.37/0.58 \\
+Eta                          & 13.01 & $+0.29$ $[-0.73, +1.25]$    & 2.99 & $+0.32$ $[-0.19, +0.86]$ & 0.53/0.37 & 0.32/0.52 \\
+GBM, base + SHIPS            & 11.60 & $-1.12$ $[-2.02, -0.38]$    & 2.47 & $-0.20$ $[-0.53, +0.07]$ & 0.46/0.21 & 0.18/0.31 \\
+Quantile GBM, base + SHIPS   &  8.52 & $-4.20$ $[-5.06, -3.47]$    & 2.00 & $-0.67$ $[-1.06, -0.34]$ & 0.45/0.23 & 0.13/0.39 \\
+\midrule
+\multicolumn{7}{l}{\emph{Temporal holdout 2025 to 2026, 10382 cases, 65 storms}} \\
+Raw AIFS                     & 27.03 & $+13.70$ $[+9.09, +17.47]$  & 4.07 & $+0.59$ $[+0.07, +1.16]$ & 0.00/0.00 & 0.00/0.00 \\
+GBM, base + SHIPS            & 13.33 &                             & 3.48 &                          & 0.52/0.23 & 0.03/0.44 \\
+Quantile GBM, base + SHIPS   &  9.30 & $-4.03$ $[-4.65, -3.38]$    & 2.51 & $-0.97$ $[-1.59, -0.38]$ & 0.55/0.18 & 0.03/0.33 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\paragraph{The environmental predictors now matter.} The clearest change is in
+Section~\ref{sec:ships}. On two basins the SHIPS-type predictors took 0.2\,kt off the point GBM
+with an interval that included zero; with 157 storms they take $1.12$\,kt $[0.38, 2.02]$
+(12.72 to 11.60), $2.44$ $[0.16, 5.08]$ on RI cases and $1.03$ $[0.41, 1.75]$ at leads to
+48\,h, and the gain reaches the two original basins themselves (North Atlantic 13.3 to
+11.3\,kt, East Pacific 13.1 to 12.8, in the same cross-validation). The predictors were not
+uninformative on two basins; 52 storms were too few to learn them.
+
+\paragraph{The probability of rapid intensification transfers.} The quantile model of the 24\,h
+change (Section~\ref{sec:prob}) has Brier skill $+0.156$ over climatology in cross-validation
+(AUC 0.864) and $+0.119$ on the 2026 holdout (AUC 0.859), where the holdout now holds 512 RI
+cases from 21 storms; on two basins the same model had $+0.09$ and $-0.17$. Without the SHIPS
+predictors it has $+0.091$ and $+0.136$, so the transfer comes from the storms, not the
+predictors. The two alternatives keep their rank: reading the probability off the intensity
+quantiles reaches $+0.07$ on both splits, and the direct classifier $+0.07$ in CV and $0.00$ on
+the holdout.
+
+\paragraph{Does a correction trained on two basins transfer?} A last run trains the SHIPS models
+on every North Atlantic and East Pacific initialisation (both years, 52 storms, basin flags
+dropped) and scores the other 105 storms (13220 cases). The point GBM transfers in part: 14.4\,kt
+against 24.2 raw, where the same model trained with those basins in its cross-validation reaches
+10.3\,kt in the West Pacific and 12.4 in the Southern Hemisphere; the quantile median is 14.1 and
+its CRPS 10.59 against 8.52. The intervals do not transfer: the conformal offsets fitted on the
+two Atlantic-side basins give 70\% coverage of a nominal 80\% in every other basin, and the
+probability of RI from the change model keeps a small skill ($+0.038$, AUC 0.82) while the
+intensity route and the classifier fall below climatology ($-0.12$ and $-0.01$). A correction
+of this kind should be trained on the basin it is used in, or at least recalibrated there.
+
 \section{What did not work}\label{sec:dnw}
 
 Three further ideas were tested and dropped; all are recorded so that they are not retried.
@@ -743,27 +867,36 @@ the intervals say so. Three model versions in one dataset, handled only by a fla
 branch of AIFS-TC only (no CNN over three-dimensional patches), and the ensemble spread tested
 only on the RI-storm subset from July 2025, at leads to 120\,h.
 Best-track initial intensity as a feature in the main numbers, with the CARQ variant reported
-once (Section~\ref{sec:prob}); two basins; leads capped at 168\,h.
+once (Section~\ref{sec:prob}); two basins in Sections~\ref{sec:results} to \ref{sec:prob},
+with the all-basin rerun of Section~\ref{sec:global} resting on JTWC satellite-based best tracks
+outside them; leads capped at 168\,h.
 Track position is not corrected. The eta network was tuned once (the paper's
 settings) and the quantile model inherits the point GBM's hyperparameters; neither was searched.
 Model variants for the dropped ideas of Section~\ref{sec:wrongstorms} and the archive prior were
 chosen after seeing results and are reported as negative findings only. The 24\,h change model,
 the spread-scaled conformal variant and the member-fraction probability were added after the
 advisor's comments, on the same 52 storms; the positive Brier skill of the change model in
-cross-validation rests on 477 RI cases from 15 storms and does not transfer to 2026.
+cross-validation rests on 477 RI cases from 15 storms and does not transfer to 2026 on two
+basins (it does on all basins, Section~\ref{sec:global}).
 
 \FloatBarrier
 \section{Reproducibility}
 
+\begin{sloppypar}
 All code is at \url{https://github.com/MichelFaloughi/scmp-5990}: the data pipeline in
 \texttt{pipeline/} (catalog, fetch, track, correct, evaluate, the pressure-level fetch and
 SHIPS predictor scripts, and the AIFS-ENS member fetch and spread features), the modeling of Sections~\ref{sec:eta} to \ref{sec:prob} in
 \texttt{core/} (\texttt{gbm.py}, \texttt{eta.ipynb}, \texttt{paired\_ci.ipynb},
 \texttt{fair\_baseline.py}, \texttt{quantile.py}, \texttt{ens\_ablation.py}, \texttt{riprob.py},
-\texttt{ens\_ri.py}, \texttt{headline.py}, \texttt{figures.py}). The 7\,GB of surface
-fields and 23\,GB of pressure-level fields regenerate from public sources with the fetch
+\texttt{ens\_ri.py}, \texttt{headline.py}, \texttt{figures.py}). The all-basin run of
+Section~\ref{sec:global} adds \texttt{catalog\_global.py}, \texttt{track\_global.py},
+\texttt{build\_global.py} and \texttt{ships\_features\_global.py} to the pipeline and
+\texttt{basin\_table.py} to the modeling, and the environment variable \texttt{SCMP\_DATA} set
+to \texttt{global} switches every core script to that dataset. The 7\,GB of surface
+fields and 23\,GB of pressure-level fields (20 and 47\,GB more for the other basins) regenerate from public sources with the fetch
 scripts (a few hours over the network); the modeling runs on a laptop in under an hour. Data sources: ECMWF Open Data
 (CC-BY-4.0), IBTrACS v04r01, and the NHC ATCF archive.
+\end{sloppypar}
 
 \bibliographystyle{plainnat}
 \bibliography{refs}

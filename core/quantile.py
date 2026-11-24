@@ -116,8 +116,14 @@ def predict_cv(df, feats, seed=0, conformal=True):
         P[te] = apply_offsets(Pte, conformal_offsets(X[tr], y[tr], w[tr], g[tr], st[tr], seed), st[te]) if conformal else Pte
     return P + df.vmax_kt.values[:, None]
 
+BASIN_HOLDOUT = False   # --basin-holdout: train on NA+EP (all inits), test on WP, NI and the Southern Hemisphere
+
+def train_mask(df):
+    """Training rows of the holdout: 2025 inits by default, the NA+EP basins under --basin-holdout."""
+    return df.basin.isin(["NA", "EP"]).values if BASIN_HOLDOUT else (df.year == 2025).values
+
 def predict_holdout(df, feats, seed=0, conformal=True):
-    tr = (df.year == 2025).values; te = ~tr
+    tr = train_mask(df); te = ~tr
     X = df[feats].values; y = df.res_v.values; w = ri_weights(df); g = df.sid.values
     P = np.full((len(df), len(Q)), np.nan)
     st = df.step.values
@@ -134,7 +140,7 @@ def point_gbm_cv(df, feats, seed=0):
     return p + df.vmax_kt.values
 
 def point_gbm_holdout(df, feats, seed=0):
-    tr = (df.year == 2025).values; te = ~tr
+    tr = train_mask(df); te = ~tr
     X = df[feats].values; y = df.res_v.values; w = ri_weights(df)
     p = np.full(len(df), np.nan)
     p[te] = HGB(random_state=seed, **PARAMS).fit(X[tr], y[tr], sample_weight=w[tr]).predict(X[te])
@@ -145,7 +151,7 @@ def classifier_ri(df, feats, holdout=False, seed=0):
     from sklearn.ensemble import HistGradientBoostingClassifier as HGC
     X = df[feats].values; y = df.ri.values; p = np.full(len(df), np.nan)
     kw = dict(max_iter=300, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=20, l2_regularization=1.0)
-    splits = [((df.year == 2025).values, (df.year != 2025).values)] if holdout \
+    splits = [(train_mask(df), ~train_mask(df))] if holdout \
         else GroupKFold(5).split(X, y, df.sid.values)
     for tr, te in splits:
         p[te] = HGC(random_state=seed, **kw).fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]
@@ -289,14 +295,19 @@ def rescore(df, tag):
 if __name__ == "__main__":
     ships = "--noships" not in sys.argv; conf = "--raw" not in sys.argv
     RI_WEIGHT = "--riweight" in sys.argv; SCALED = "--scaled" in sys.argv; carq = "--carq" in sys.argv
+    BASIN_HOLDOUT = "--basin-holdout" in sys.argv
     df, feats = load(ships, carq)
+    if BASIN_HOLDOUT:   # the basin flags are constant on the training rows
+        feats = [f for f in feats if f not in ("is_wp", "is_ni", "is_sh")]
     tag = ("ships" if ships else "base") + ("" if conf else "_raw") + ("_riw" if RI_WEIGHT else "") \
-        + ("_scaled" if SCALED else "") + ("_carq" if carq else "")
+        + ("_scaled" if SCALED else "") + ("_carq" if carq else "") + ("_xbasin" if BASIN_HOLDOUT else "")
     print(f"config: {tag}")
     os.makedirs(OUT, exist_ok=True)
     if "--rescore" in sys.argv:
         rescore(df, tag); sys.exit()
-    P = predict_cv(df, feats, conformal=conf); pt = point_gbm_cv(df, feats); pc = classifier_ri(df, feats)
-    report(df, P, pt, f"storm-grouped CV, {tag}", pc).to_csv(f"{OUT}/quantile_cv_{tag}.csv", index=False)
+    if not BASIN_HOLDOUT:   # the CV under --basin-holdout would repeat the main run
+        P = predict_cv(df, feats, conformal=conf); pt = point_gbm_cv(df, feats); pc = classifier_ri(df, feats)
+        report(df, P, pt, f"storm-grouped CV, {tag}", pc).to_csv(f"{OUT}/quantile_cv_{tag}.csv", index=False)
+    hname = "cross-basin holdout NA+EP -> WP+NI+SH" if BASIN_HOLDOUT else "temporal holdout 2025->2026"
     P = predict_holdout(df, feats, conformal=conf); pt = point_gbm_holdout(df, feats); pc = classifier_ri(df, feats, holdout=True)
-    report(df, P, pt, f"temporal holdout 2025->2026, {tag}", pc).to_csv(f"{OUT}/quantile_holdout_{tag}.csv", index=False)
+    report(df, P, pt, f"{hname}, {tag}", pc).to_csv(f"{OUT}/quantile_holdout_{tag}.csv", index=False)

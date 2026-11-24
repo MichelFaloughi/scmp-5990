@@ -38,7 +38,7 @@ def add_dv24(df):
 def fit_dv24(df, feats, holdout=False, seed=0):
     X = df[feats].values; y = df.dv24.values; g = df.sid.values; st = df.step.values
     w = np.ones(len(df)); P = np.full((len(df), len(Q)), np.nan)
-    splits = [((df.year == 2025).values, (df.year != 2025).values)] if holdout else GroupKFold(5).split(X, y, g)
+    splits = [(qm.train_mask(df), ~qm.train_mask(df))] if holdout else GroupKFold(5).split(X, y, g)
     for tr, te in splits:
         tr, te = np.asarray(tr), np.asarray(te)
         Pte = fit_quantiles(X[tr], y[tr], w[tr], X[te], seed)
@@ -71,12 +71,17 @@ def score(tag, d, P, p_cls, p_int):
 
 def main():
     carq = "--carq" in sys.argv; qm.SCALED = "--scaled" in sys.argv; ships = "--noships" not in sys.argv
+    qm.BASIN_HOLDOUT = "--basin-holdout" in sys.argv
     df, feats = qm.load(ships, carq)
+    if qm.BASIN_HOLDOUT:
+        feats = [f for f in feats if f not in ("is_wp", "is_ni", "is_sh")]
     df = add_dv24(df); feats = feats + ["aifs_dv24"]
     df = df[(df.step >= 24) & df.dv24.notna()].reset_index(drop=True)
-    tag = ("ships" if ships else "base") + ("_scaled" if qm.SCALED else "") + ("_carq" if carq else "")
+    tag = ("ships" if ships else "base") + ("_scaled" if qm.SCALED else "") + ("_carq" if carq else "") \
+        + ("_xbasin" if qm.BASIN_HOLDOUT else "")
     os.makedirs(OUT, exist_ok=True)
-    for name, holdout in [("cv", False), ("holdout", True)]:
+    hname = "cross-basin holdout NA+EP -> WP+NI+SH" if qm.BASIN_HOLDOUT else "temporal holdout 2025->2026"
+    for name, holdout in ([("holdout", True)] if qm.BASIN_HOLDOUT else [("cv", False), ("holdout", True)]):
         P = fit_dv24(df, feats, holdout)
         m = np.isfinite(P[:, 0]); d = df[m].reset_index(drop=True); P = P[m]
         p_cls = classifier_ri(df, feats, holdout=holdout)[m]
@@ -85,7 +90,7 @@ def main():
         if os.path.exists(f):
             qi = pd.read_csv(f, keep_default_na=False, na_values=[""])[["init", "sid", "step", "p_ri"]]
             p_int = d[["init", "sid", "step"]].merge(qi, how="left", on=["init", "sid", "step"]).p_ri.values
-        res = score(f"{'storm-grouped CV' if not holdout else 'temporal holdout 2025->2026'}, {tag}", d, P, p_cls, p_int)
+        res = score(f"{'storm-grouped CV' if not holdout else hname}, {tag}", d, P, p_cls, p_int)
         o = d[["init", "sid", "step", "ri", "dv24", "aifs_dv24"]].copy()
         for j, q in enumerate(Q):
             o[f"dq{int(q * 100):02d}"] = P[:, j]
