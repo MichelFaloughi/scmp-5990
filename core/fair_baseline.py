@@ -102,10 +102,23 @@ def main():
               + ", ".join(f"{it}it wd={wd:g}" for _, s, it, wd in chosen[-len(SEEDS):]), flush=True)
     for c in cols:
         df[c] = df.vmax_kt + pred[c]
-    df["gbm"] = df.corr_vmax_kt
+    # the reference GBM: the repo's 2x RI-weighted 5-seed fit where the dataset carries it (NA+EP),
+    # otherwise the same fit made here (all-basin dataset)
+    df["gbm"] = df.corr_vmax_kt if "corr_vmax_kt" in df.columns else df.vmax_kt + gbm_cv(X_all, y_all, g, df.ri.values)
     report(df, cols + ["gbm"])
     os.makedirs(OUT, exist_ok=True)
     df[["init", "sid", "step", "ri", "bt_wind_kt", "vmax_kt"] + cols + ["gbm"]].to_csv(f"{OUT}/fair_baseline_cv.csv", index=False)
+
+def gbm_cv(X, y, g, ri, seeds=(0, 1, 2, 3, 4)):
+    """pipeline/correct.py's GBM: 2x weight on RI cases, 5 seeds averaged, same storm folds."""
+    from sklearn.ensemble import HistGradientBoostingRegressor
+    pred = np.zeros(len(y)); w = np.where(ri == 1, 2.0, 1.0); X = X.values
+    for tr, te in GroupKFold(5).split(X, y, g):
+        for s in seeds:
+            m = HistGradientBoostingRegressor(max_iter=300, learning_rate=0.05, max_leaf_nodes=15,
+                                              min_samples_leaf=20, l2_regularization=1.0, random_state=s)
+            m.fit(X[tr], y[tr], sample_weight=w[tr]); pred[te] += m.predict(X[te]) / len(seeds)
+    return pred
 
 def storm_boot(d, groups, n=2000, seed=0):
     r = np.random.default_rng(seed); u = np.unique(groups)
