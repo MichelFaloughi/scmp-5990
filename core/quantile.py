@@ -131,6 +131,31 @@ def predict_holdout(df, feats, seed=0, conformal=True):
     P[te] = apply_offsets(Pte, conformal_offsets(X[tr], y[tr], w[tr], g[tr], st[tr], seed), st[te]) if conformal else Pte
     return P + df.vmax_kt.values[:, None]
 
+BASIN_GROUPS = {"NA": ["NA"], "EP": ["EP"], "WP": ["WP"], "NI": ["NI"], "SH": ["SI", "SP", "SA"]}
+
+def lobo_splits(df):
+    """Leave-one-basin-out (advisor, 2026-11-23): one split per basin group, test on that group,
+    train on every other basin. The Southern Hemisphere basins form one group."""
+    b = df.basin.values
+    return [(~np.isin(b, bs), np.isin(b, bs)) for bs in BASIN_GROUPS.values() if np.isin(b, bs).any()]
+
+def predict_splits(df, feats, splits, seed=0, conformal=True):
+    """Quantile GBM plus cross-conformal offsets, fitted on the train side of each split."""
+    X = df[feats].values; y = df.res_v.values; w = ri_weights(df); g = df.sid.values
+    P = np.full((len(df), len(Q)), np.nan)
+    st = df.step.values
+    for tr, te in splits:
+        Pte = fit_quantiles(X[tr], y[tr], w[tr], X[te], seed)
+        P[te] = apply_offsets(Pte, conformal_offsets(X[tr], y[tr], w[tr], g[tr], st[tr], seed), st[te]) if conformal else Pte
+    return P + df.vmax_kt.values[:, None]
+
+def point_gbm_splits(df, feats, splits, seed=0):
+    X = df[feats].values; y = df.res_v.values; w = ri_weights(df)
+    p = np.full(len(df), np.nan)
+    for tr, te in splits:
+        p[te] = HGB(random_state=seed, **PARAMS).fit(X[tr], y[tr], sample_weight=w[tr]).predict(X[te])
+    return p + df.vmax_kt.values
+
 def point_gbm_cv(df, feats, seed=0):
     """The deterministic reference: MSE GBM on the residual, same CV, same features."""
     X = df[feats].values; y = df.res_v.values; w = ri_weights(df)
@@ -146,13 +171,14 @@ def point_gbm_holdout(df, feats, seed=0):
     p[te] = HGB(random_state=seed, **PARAMS).fit(X[tr], y[tr], sample_weight=w[tr]).predict(X[te])
     return p + df.vmax_kt.values
 
-def classifier_ri(df, feats, holdout=False, seed=0):
+def classifier_ri(df, feats, holdout=False, seed=0, splits=None):
     """Direct baseline for P(RI): a gradient-boosted classifier on the RI label, same features."""
     from sklearn.ensemble import HistGradientBoostingClassifier as HGC
     X = df[feats].values; y = df.ri.values; p = np.full(len(df), np.nan)
     kw = dict(max_iter=300, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=20, l2_regularization=1.0)
-    splits = [(train_mask(df), ~train_mask(df))] if holdout \
-        else GroupKFold(5).split(X, y, df.sid.values)
+    if splits is None:
+        splits = [(train_mask(df), ~train_mask(df))] if holdout \
+            else GroupKFold(5).split(X, y, df.sid.values)
     for tr, te in splits:
         p[te] = HGC(random_state=seed, **kw).fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]
     return p
@@ -295,16 +321,22 @@ def rescore(df, tag):
 if __name__ == "__main__":
     ships = "--noships" not in sys.argv; conf = "--raw" not in sys.argv
     RI_WEIGHT = "--riweight" in sys.argv; SCALED = "--scaled" in sys.argv; carq = "--carq" in sys.argv
-    BASIN_HOLDOUT = "--basin-holdout" in sys.argv
+    BASIN_HOLDOUT = "--basin-holdout" in sys.argv; LOBO = "--lobo" in sys.argv
     df, feats = load(ships, carq)
-    if BASIN_HOLDOUT:   # the basin flags are constant on the training rows
+    if BASIN_HOLDOUT or LOBO:   # the held-out basin's flag is constant on the training rows
         feats = [f for f in feats if f not in ("is_wp", "is_ni", "is_sh")]
     tag = ("ships" if ships else "base") + ("" if conf else "_raw") + ("_riw" if RI_WEIGHT else "") \
         + ("_scaled" if SCALED else "") + ("_carq" if carq else "") + ("_xbasin" if BASIN_HOLDOUT else "")
+    split_name = "lobo" if LOBO else "holdout"
     print(f"config: {tag}")
     os.makedirs(OUT, exist_ok=True)
     if "--rescore" in sys.argv:
         rescore(df, tag); sys.exit()
+    if LOBO:   # leave-one-basin-out: every case predicted by models that never saw its basin
+        sp = lobo_splits(df)
+        P = predict_splits(df, feats, sp, conformal=conf); pt = point_gbm_splits(df, feats, sp); pc = classifier_ri(df, feats, splits=sp)
+        report(df, P, pt, f"leave-one-basin-out, {tag}", pc).to_csv(f"{OUT}/quantile_lobo_{tag}.csv", index=False)
+        sys.exit()
     if not BASIN_HOLDOUT:   # the CV under --basin-holdout would repeat the main run
         P = predict_cv(df, feats, conformal=conf); pt = point_gbm_cv(df, feats); pc = classifier_ri(df, feats)
         report(df, P, pt, f"storm-grouped CV, {tag}", pc).to_csv(f"{OUT}/quantile_cv_{tag}.csv", index=False)

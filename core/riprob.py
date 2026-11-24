@@ -35,10 +35,11 @@ def add_dv24(df):
     df["aifs_dv24"] = df.vmax_kt.values - np.where(df.step.values == 24, df.aifs0_vmax.values, prev)
     return df
 
-def fit_dv24(df, feats, holdout=False, seed=0):
+def fit_dv24(df, feats, holdout=False, seed=0, splits=None):
     X = df[feats].values; y = df.dv24.values; g = df.sid.values; st = df.step.values
     w = np.ones(len(df)); P = np.full((len(df), len(Q)), np.nan)
-    splits = [(qm.train_mask(df), ~qm.train_mask(df))] if holdout else GroupKFold(5).split(X, y, g)
+    if splits is None:
+        splits = [(qm.train_mask(df), ~qm.train_mask(df))] if holdout else GroupKFold(5).split(X, y, g)
     for tr, te in splits:
         tr, te = np.asarray(tr), np.asarray(te)
         Pte = fit_quantiles(X[tr], y[tr], w[tr], X[te], seed)
@@ -71,9 +72,9 @@ def score(tag, d, P, p_cls, p_int):
 
 def main():
     carq = "--carq" in sys.argv; qm.SCALED = "--scaled" in sys.argv; ships = "--noships" not in sys.argv
-    qm.BASIN_HOLDOUT = "--basin-holdout" in sys.argv
+    qm.BASIN_HOLDOUT = "--basin-holdout" in sys.argv; lobo = "--lobo" in sys.argv
     df, feats = qm.load(ships, carq)
-    if qm.BASIN_HOLDOUT:
+    if qm.BASIN_HOLDOUT or lobo:
         feats = [f for f in feats if f not in ("is_wp", "is_ni", "is_sh")]
     df = add_dv24(df); feats = feats + ["aifs_dv24"]
     df = df[(df.step >= 24) & df.dv24.notna()].reset_index(drop=True)
@@ -81,16 +82,19 @@ def main():
         + ("_xbasin" if qm.BASIN_HOLDOUT else "")
     os.makedirs(OUT, exist_ok=True)
     hname = "cross-basin holdout NA+EP -> WP+NI+SH" if qm.BASIN_HOLDOUT else "temporal holdout 2025->2026"
-    for name, holdout in ([("holdout", True)] if qm.BASIN_HOLDOUT else [("cv", False), ("holdout", True)]):
-        P = fit_dv24(df, feats, holdout)
+    runs = [("lobo", None)] if lobo else [("holdout", True)] if qm.BASIN_HOLDOUT else [("cv", False), ("holdout", True)]
+    for name, holdout in runs:
+        sp = qm.lobo_splits(df) if name == "lobo" else None
+        P = fit_dv24(df, feats, holdout, splits=sp)
         m = np.isfinite(P[:, 0]); d = df[m].reset_index(drop=True); P = P[m]
-        p_cls = classifier_ri(df, feats, holdout=holdout)[m]
+        p_cls = classifier_ri(df, feats, holdout=holdout, splits=sp)[m]
         f = f"{OUT}/quantile_{name}_{tag}.csv"
         p_int = None
         if os.path.exists(f):
             qi = pd.read_csv(f, keep_default_na=False, na_values=[""])[["init", "sid", "step", "p_ri"]]
             p_int = d[["init", "sid", "step"]].merge(qi, how="left", on=["init", "sid", "step"]).p_ri.values
-        res = score(f"{'storm-grouped CV' if not holdout else hname}, {tag}", d, P, p_cls, p_int)
+        label = "leave-one-basin-out" if name == "lobo" else "storm-grouped CV" if not holdout else hname
+        res = score(f"{label}, {tag}", d, P, p_cls, p_int)
         o = d[["init", "sid", "step", "ri", "dv24", "aifs_dv24"]].copy()
         for j, q in enumerate(Q):
             o[f"dq{int(q * 100):02d}"] = P[:, j]

@@ -71,7 +71,12 @@ East Pacific, West Pacific, North Indian, South Indian, South Pacific; 157 storm
 coverage, tail-weighted CRPS) of a saved run. `quantile.py --basin-holdout` and
 `riprob.py --basin-holdout` replace the temporal holdout with a cross-basin one (train on every
 North Atlantic and East Pacific init, test on the other basins; basin flags dropped; CV skipped),
-tagged `_xbasin`.
+tagged `_xbasin`. `quantile.py --lobo` and `riprob.py --lobo` run leave-one-basin-out (test on each
+basin group in turn, train on the rest; file `quantile_lobo_{tag}.csv`, which basin_table.py also
+reads). `point_conformal.py` wraps every point model (raw AIFS, GBMs, MLPs, eta, and the quantile
+median) in the same split-conformal residual distribution from its out-of-fold errors and rescores
+CRPS, so the quantile model is compared with point forecasts that carry a distribution too
+(advisor note of 2026-11-23); runs on either dataset.
 
 ## Papers
 

@@ -4,7 +4,8 @@ Reads quantile_{cv,holdout}_{tag}.csv from data/out/global/ and the all-basin re
 for each basin: cases, storms, RI cases, raw AIFS MAE, point GBM MAE, quantile-median MAE, CRPS of
 the quantile model and of the point GBM, 80% interval coverage, and tail-weighted CRPS above 96 kt.
 
-Run from core/:  SCMP_DATA=global python basin_table.py [--tag base|ships]
+Run from core/:  SCMP_DATA=global python basin_table.py [--tag base|ships]   (cv, holdout and, when
+present, the leave-one-basin-out file quantile_lobo_{tag}.csv)
 """
 import os, sys
 import numpy as np, pandas as pd
@@ -41,7 +42,7 @@ def main():
     a = sys.argv[1:]
     tag = a[a.index("--tag") + 1] if "--tag" in a else "ships"
     ref = pd.read_csv(data_file("reference"), keep_default_na=False, na_values=[""])[["init", "sid", "step", "basin", "ri", "vmax_kt"]]
-    for split in ["cv", "holdout"]:
+    for split in ["cv", "holdout", "lobo"]:
         if os.path.exists(f"{OUT}/quantile_{split}_{tag}.csv"):
             table(split, tag, ref)
 
